@@ -1,0 +1,56 @@
+import classNames from 'classnames';
+import { join } from 'pathe';
+import { createSearchParams, useSearchParams } from 'react-router';
+import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { openUrl } from '@/lib/network/url.ts';
+import { useDraggedFileMove } from '@/pages/server/files/hooks/useDraggedFileMove.ts';
+import { useFileManagerApi, useFileManagerStore } from '@/stores/fileManager.ts';
+import FileRowIcon from './FileRowIcon.tsx';
+
+function FileParentDirectoryRow() {
+  const [_, setSearchParams] = useSearchParams();
+  const store = useFileManagerApi();
+  const browsingDirectory = useFileManagerStore((state) => state.browsingDirectory);
+
+  const parentDirectory = join(browsingDirectory, '..');
+  const { isDropTarget, getDropHandlers } = useDraggedFileMove({ targetDirectory: parentDirectory });
+  const parentIsDropTarget = isDropTarget(parentDirectory);
+
+  const openParentDirectory = () => {
+    store.getState().doSelectFiles([]);
+    setSearchParams({ directory: parentDirectory });
+  };
+
+  return (
+    <TableRow
+      className='hydro-file-row hydro-file-parent-row cursor-pointer select-none'
+      bg={parentIsDropTarget ? 'var(--mantine-color-green-light)' : undefined}
+      onClick={openParentDirectory}
+      onMouseDownCapture={(e) => {
+        if (e.button === 1) e.preventDefault();
+      }}
+      onAuxClick={(e) => {
+        if (e.button !== 1) return;
+
+        e.preventDefault();
+        openUrl(`${window.location.pathname}?${createSearchParams({ directory: parentDirectory })}`);
+      }}
+      {...getDropHandlers(parentDirectory)}
+    >
+      <td className='pl-4 relative w-10 py-2'></td>
+
+      <TableData className='w-full max-w-0'>
+        <span className='flex items-center gap-4 min-w-0 py-0.5 leading-5'>
+          <FileRowIcon className='shrink-0 text-(--mantine-color-dimmed)' directory />
+          <span className={classNames('truncate', parentIsDropTarget && 'font-medium')}>..</span>
+        </span>
+      </TableData>
+
+      <TableData></TableData>
+      <TableData className='hidden md:table-cell'></TableData>
+      <td className='w-0'></td>
+    </TableRow>
+  );
+}
+
+export default FileParentDirectoryRow;

@@ -1,0 +1,241 @@
+import { faDocker } from '@fortawesome/free-brands-svg-icons';
+import { faPlay } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import debounce from 'debounce';
+import { useEffect, useMemo, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import { httpErrorToHuman } from '@/api/axios.ts';
+import getVariables from '@/api/server/startup/getVariables.ts';
+import updateCommand from '@/api/server/startup/updateCommand.ts';
+import updateDockerImage from '@/api/server/startup/updateDockerImage.ts';
+import updateVariables from '@/api/server/startup/updateVariables.ts';
+import Button from '@/elements/buttons/Button.tsx';
+import ServerContentContainer from '@/elements/containers/ServerContentContainer.tsx';
+import TitleCard from '@/elements/data-display/TitleCard.tsx';
+import Spinner from '@/elements/feedback/Spinner.tsx';
+import Select from '@/elements/input/Select.tsx';
+import TextArea from '@/elements/input/TextArea.tsx';
+import Group from '@/elements/layout/Group.tsx';
+import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
+import Title from '@/elements/typography/Title.tsx';
+import { useKeyboardShortcut } from '@/plugins/quick-actions/useKeyboardShortcuts.ts';
+import { useBlocker } from '@/plugins/useBlocker.ts';
+import { useServerCan } from '@/plugins/usePermissions.ts';
+import { useToast } from '@/providers/ToastProvider.tsx';
+import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import { useGlobalStore } from '@/stores/global.ts';
+import { useServerStore } from '@/stores/server.ts';
+import GlobalVariables from '../GlobalVariables.tsx';
+import VariableContainer from './VariableBox.tsx';
+
+export default function ServerStartup() {
+  const { t } = useTranslations();
+  const { addToast } = useToast();
+  const settings = useGlobalStore((state) => state.settings);
+  const { server, updateServer, variables, setVariables, updateVariable } = useServerStore(
+    useShallow((state) => ({
+      server: state.server,
+      updateServer: state.updateServer,
+      variables: state.variables,
+      setVariables: state.setVariables,
+      updateVariable: state.updateVariable,
+    })),
+  );
+  const canModifyVariables = useServerCan('startup.update');
+  const canModifyStartupCommand = useServerCan('startup.command');
+  const canModifyDockerImage = useServerCan('startup.docker-image');
+
+  const [command, setCommand] = useState(server.startup);
+  const [dockerImage, setDockerImage] = useState(server.image);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [variablesLoading, setVariablesLoading] = useState(true);
+  const blocker = useBlocker(Object.keys(values).length > 0);
+
+  const setDebouncedCommand = useMemo(
+    () =>
+      debounce((command: string) => {
+        updateCommand(server.uuid, command)
+          .then(() => {
+            addToast(t('pages.server.startup.toast.startupCommandUpdated', {}), 'success');
+            updateServer({ startup: command });
+          })
+          .catch((msg) => {
+            addToast(httpErrorToHuman(msg), 'error');
+          });
+      }, 500),
+    [server.uuid, t, addToast, updateServer],
+  );
+
+  useEffect(() => {
+    getVariables(server.uuid).then((data) => {
+      setVariables(data);
+      setVariablesLoading(false);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (command !== server.startup) {
+      setDebouncedCommand(command);
+    }
+  }, [command]);
+
+  useEffect(() => {
+    if (dockerImage !== server.image) {
+      updateDockerImage(server.uuid, dockerImage)
+        .then(() => {
+          addToast(t('pages.server.startup.toast.dockerImageUpdated', {}), 'success');
+          updateServer({ image: dockerImage });
+        })
+        .catch((msg) => {
+          addToast(httpErrorToHuman(msg), 'error');
+        });
+    }
+  }, [dockerImage]);
+
+  const doUpdate = () => {
+    setLoading(true);
+    updateVariables(
+      server.uuid,
+      Object.entries(values).map(([envVariable, value]) => ({
+        envVariable,
+        value,
+      })),
+    )
+      .then(() => {
+        addToast(t('pages.server.startup.toast.variablesUpdated', {}), 'success');
+        for (const [envVariable, value] of Object.entries(values)) {
+          updateVariable(envVariable, { value });
+        }
+
+        setValues({});
+      })
+      .catch((msg) => {
+        addToast(httpErrorToHuman(msg), 'error');
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useKeyboardShortcut(
+    's',
+    () => {
+      if (Object.keys(values).length > 0 && !loading) {
+        doUpdate();
+      }
+    },
+    {
+      modifiers: ['ctrlOrMeta'],
+      allowWhenInputFocused: true,
+      deps: [values, loading],
+    },
+  );
+
+  return (
+    <ServerContentContainer
+      title={t('pages.server.startup.title', {})}
+      registry={window.extensionContext.extensionRegistry.pages.server.startup.container}
+    >
+      <ConfirmationModal
+        title={t('pages.server.startup.modal.unsavedChanges.title', {})}
+        opened={blocker.state === 'blocked'}
+        onClose={() => blocker.reset()}
+        onConfirmed={() => blocker.proceed()}
+        confirm={t('common.button.leavePage', {})}
+      >
+        {t('pages.server.startup.modal.unsavedChanges.content', {}).md()}
+      </ConfirmationModal>
+
+      <div className='flex flex-col md:grid md:grid-cols-3 gap-4 mt-2.5'>
+        <TitleCard
+          title={t('common.form.startupCommand', {})}
+          icon={<FontAwesomeIcon icon={faPlay} />}
+          className='col-span-2'
+        >
+          {Object.keys(server.egg.startupCommands).length > 0 && (
+            <Select
+              label={t('pages.server.startup.predefinedStartupCommands', {})}
+              data={[
+                ...((!server.eggConfiguration?.startupAllowCustomCommand &&
+                  Object.values(server.egg.startupCommands).every((value) => value !== command)) ||
+                server.eggConfiguration?.startupAllowCustomCommand
+                  ? [{ label: t('common.custom', {}), value: '' }]
+                  : []),
+                ...Object.entries(server.egg.startupCommands).map(([key, value]) => ({
+                  value,
+                  label: key,
+                })),
+              ]}
+              disabled={
+                !canModifyStartupCommand ||
+                (!server.eggConfiguration?.startupAllowCustomCommand &&
+                  Object.values(server.egg.startupCommands).every((value) => value !== command))
+              }
+              value={Object.values(server.egg.startupCommands).find((value) => value === command) || ''}
+              onChange={(value) => setCommand(value ?? '')}
+              mb='sm'
+            />
+          )}
+          <TextArea
+            withAsterisk
+            placeholder={t('common.form.startupCommand', {})}
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            readOnly={!canModifyStartupCommand || !server.eggConfiguration?.startupAllowCustomCommand}
+            autosize
+          />
+        </TitleCard>
+        <TitleCard title={t('common.form.dockerImage', {})} icon={<FontAwesomeIcon icon={faDocker} />}>
+          <Select
+            withAsterisk
+            value={dockerImage}
+            onChange={(value) => setDockerImage(value ?? '')}
+            data={Object.entries(server.egg.dockerImages).map(([key, value]) => ({
+              value,
+              label: key,
+            }))}
+            searchable
+            disabled={
+              !canModifyDockerImage ||
+              (!settings.server.allowOverwritingCustomDockerImage &&
+                !Object.values(server.egg.dockerImages).includes(server.image))
+            }
+          />
+          <p className='text-(--mantine-color-dimmed) text-sm mt-4'>
+            {Object.values(server.egg.dockerImages).includes(server.image) ||
+            settings.server.allowOverwritingCustomDockerImage
+              ? t('pages.server.startup.dockerImageDescription', {})
+              : t('pages.server.startup.dockerImageDescriptionCustom', {})}
+          </p>
+        </TitleCard>
+      </div>
+
+      <Group justify='space-between' my='md'>
+        <Title order={2}>{t('pages.server.startup.variables', {})}</Title>
+        <Group>
+          <Button onClick={doUpdate} disabled={Object.keys(values).length === 0} loading={loading} color='blue'>
+            {t('common.button.save', {})}
+          </Button>
+        </Group>
+      </Group>
+
+      <GlobalVariables />
+      <div className='hydro-variable-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-4'>
+        {variablesLoading ? (
+          <Spinner.Centered className='col-span-full' />
+        ) : variables.length === 0 ? (
+          <p className='text-(--mantine-color-dimmed) col-span-full'>{t('pages.server.startup.noVariables', {})}</p>
+        ) : null}
+        {variables.map((variable) => (
+          <VariableContainer
+            key={variable.envVariable}
+            variable={variable}
+            loading={loading}
+            disabled={!canModifyVariables}
+            value={values[variable.envVariable] ?? variable.value ?? variable.defaultValue ?? ''}
+            setValue={(value) => setValues((prev) => ({ ...prev, [variable.envVariable]: value }))}
+          />
+        ))}
+      </div>
+    </ServerContentContainer>
+  );
+}

@@ -1,0 +1,246 @@
+import { faClone, faFileDownload, faPlay, faPlayCircle, faShareAlt, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { Calendar, Pencil, TrashBin } from '@gravity-ui/icons';
+import { useQueryClient } from '@tanstack/react-query';
+import { dump } from 'js-yaml';
+import { forwardRef, useState } from 'react';
+import { useNavigate } from 'react-router';
+import { z } from 'zod';
+import { httpErrorToHuman } from '@/api/axios.ts';
+import deleteSchedule from '@/api/server/schedules/deleteSchedule.ts';
+import exportSchedule from '@/api/server/schedules/exportSchedule.ts';
+import triggerSchedule from '@/api/server/schedules/triggerSchedule.ts';
+import Button from '@/elements/buttons/Button.tsx';
+import { ServerCan } from '@/elements/Can.tsx';
+import Badge from '@/elements/data-display/Badge.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
+import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
+import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
+import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
+import { downloadTextFile } from '@/lib/download/download.ts';
+import { queryKeys } from '@/lib/queryKeys.ts';
+import { serverScheduleSchema } from '@/lib/schemas/server/schedules.ts';
+import ScheduleDuplicateModal from '@/pages/server/schedules/modals/ScheduleDuplicateModal.tsx';
+import { useServerCan } from '@/plugins/usePermissions.ts';
+import { useToast } from '@/providers/ToastProvider.tsx';
+import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import { useServerStore } from '@/stores/server.ts';
+// Row layout ported from Hydrodactyl components/server/schedules; Calagopus controller retained.
+import ScheduleCronRow from '../ScheduleCronRow.tsx';
+
+interface ScheduleRowProps {
+  schedule: z.infer<typeof serverScheduleSchema>;
+  atLimit?: boolean;
+  isSelected?: boolean;
+  onSelectionChange?: (selected: boolean) => void;
+  onClick?: (event: React.MouseEvent) => void;
+}
+
+const ScheduleRow = forwardRef<HTMLTableRowElement, ScheduleRowProps>(function ScheduleRow(
+  { schedule, atLimit = false, isSelected = false, onSelectionChange, onClick },
+  ref,
+) {
+  const { t } = useTranslations();
+  const { addToast } = useToast();
+  const navigate = useNavigate();
+  const { server } = useServerStore();
+  const queryClient = useQueryClient();
+  const navigateUrl = `/server/${server.uuidShort}/schedules/${schedule.uuid}`;
+
+  const [openModal, setOpenModal] = useState<'delete' | 'duplicate' | null>(null);
+
+  const doDelete = async () => {
+    await deleteSchedule(server.uuid, schedule.uuid)
+      .then(() => {
+        addToast(t('pages.server.schedules.toast.deleted', {}), 'success');
+        setOpenModal(null);
+        queryClient.invalidateQueries({ queryKey: queryKeys.server(server.uuid).schedules.all() });
+      })
+      .catch((msg) => {
+        addToast(httpErrorToHuman(msg), 'error');
+      });
+  };
+
+  const doExport = (format: 'json' | 'yaml') => {
+    exportSchedule(server.uuid, schedule.uuid)
+      .then((data) => {
+        addToast(t('pages.server.schedules.toast.exported', {}), 'success');
+
+        if (format === 'json') {
+          downloadTextFile(JSON.stringify(data, undefined, 2), `schedule-${schedule.uuid}.json`);
+        } else {
+          downloadTextFile(dump(data, { flowLevel: -1, forceQuotes: true }), `schedule-${schedule.uuid}.yml`);
+        }
+      })
+      .catch((msg) => {
+        addToast(httpErrorToHuman(msg), 'error');
+      });
+  };
+
+  const doTriggerSchedule = (skipCondition: boolean) => {
+    triggerSchedule(server.uuid, schedule.uuid, skipCondition)
+      .then(() => {
+        addToast(t('pages.server.schedules.toast.triggered', {}), 'success');
+      })
+      .catch((msg) => {
+        addToast(httpErrorToHuman(msg), 'error');
+      });
+  };
+
+  return (
+    <>
+      <ConfirmationModal
+        opened={openModal === 'delete'}
+        onClose={() => setOpenModal(null)}
+        title={t('pages.server.schedules.modal.deleteSchedule.title', {})}
+        confirm={t('common.button.delete', {})}
+        onConfirmed={doDelete}
+      >
+        {t('pages.server.schedules.modal.deleteSchedule.content', { name: schedule.name })}
+      </ConfirmationModal>
+
+      <ScheduleDuplicateModal
+        schedule={schedule}
+        opened={openModal === 'duplicate'}
+        onClose={() => setOpenModal(null)}
+      />
+
+      <ContextMenu
+        items={[
+          {
+            type: 'action',
+            icon: faPlay,
+            label: t('pages.server.schedules.button.runNow', {}),
+            items: [
+              {
+                type: 'action',
+                icon: faPlayCircle,
+                label: t('pages.server.schedules.button.runNowWithConditions', {}),
+                onClick: () => doTriggerSchedule(false),
+                color: 'gray',
+              },
+              {
+                type: 'action',
+                icon: faPlay,
+                label: t('pages.server.schedules.button.runNowIgnoreConditions', {}),
+                onClick: () => doTriggerSchedule(true),
+                color: 'gray',
+              },
+            ],
+            canAccess: useServerCan('schedules.update'),
+          },
+          {
+            type: 'action',
+            icon: faShareAlt,
+            label: t('common.button.export', {}),
+            items: [
+              {
+                type: 'action',
+                icon: faFileDownload,
+                label: t('common.button.exportAs', { format: 'JSON' }),
+                onClick: () => doExport('json'),
+                color: 'gray',
+              },
+              {
+                type: 'action',
+                icon: faFileDownload,
+                label: t('common.button.exportAs', { format: 'YAML' }),
+                onClick: () => doExport('yaml'),
+                color: 'gray',
+              },
+            ],
+            canAccess: useServerCan('schedules.read'),
+          },
+          {
+            type: 'action',
+            icon: faClone,
+            label: t('common.button.duplicate', {}),
+            onClick: () => setOpenModal('duplicate'),
+            disabled: atLimit,
+            color: 'gray',
+            canAccess: useServerCan('schedules.create'),
+          },
+          {
+            type: 'action',
+            icon: faTrash,
+            label: t('common.button.delete', {}),
+            onClick: () => setOpenModal('delete'),
+            color: 'red',
+            canAccess: useServerCan('schedules.delete'),
+          },
+        ]}
+      >
+        {({ items, openMenu }) => (
+          <TableRow
+            ref={ref}
+            className='hydro-resource-row cursor-pointer'
+            bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              openMenu(e.clientX, e.clientY);
+            }}
+            onClick={(e) => {
+              onClick?.(e);
+              if (!e.defaultPrevented) navigate(navigateUrl);
+            }}
+          >
+            {onSelectionChange !== undefined && (
+              <TableSelectionCell id={schedule.uuid} checked={isSelected} onChange={onSelectionChange} />
+            )}
+            <TableData colSpan={100}>
+              <div className='hydro-item'>
+                <div className='hydro-item-icon hydro-schedule-icon'>
+                  <Calendar width={25} height={25} />
+                </div>
+                <div className='hydro-item-copy'>
+                  <h3>{schedule.name}</h3>
+                  <p>
+                    Last run at:{' '}
+                    {schedule.lastRun ? <FormattedTimestamp timestamp={schedule.lastRun} /> : t('common.na', {})}
+                  </p>
+                  {schedule.lastFailure && (
+                    <p>
+                      Last failure: <FormattedTimestamp timestamp={schedule.lastFailure} />
+                    </p>
+                  )}
+                </div>
+                <Badge className='hydro-schedule-badge' color={schedule.enabled ? 'green' : 'gray'}>
+                  {schedule.enabled ? t('common.badge.active', {}) : t('common.badge.inactive', {})}
+                </Badge>
+                <div className='hydro-item-actions'>
+                  <ServerCan action='schedules.update'>
+                    <Button
+                      variant='default'
+                      aria-label={t('common.button.edit', {})}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(navigateUrl);
+                      }}
+                    >
+                      <Pencil width={22} height={22} />
+                    </Button>
+                  </ServerCan>
+                  <ServerCan action='schedules.delete'>
+                    <Button
+                      color='red'
+                      aria-label={t('common.button.delete', {})}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenModal('delete');
+                      }}
+                    >
+                      <TrashBin width={22} height={22} />
+                    </Button>
+                  </ServerCan>
+                </div>
+              </div>
+              <ScheduleCronRow triggers={schedule.triggers} />
+            </TableData>
+            <ContextMenuToggle items={items} openMenu={openMenu} />
+          </TableRow>
+        )}
+      </ContextMenu>
+    </>
+  );
+});
+
+export default ScheduleRow;

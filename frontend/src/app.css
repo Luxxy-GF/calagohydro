@@ -1,0 +1,2227 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Hydrodactyl appearance adapted for Calagopus's component system.
+ * See NOTICE and LICENSE-HYDRODACTYL.md for upstream attribution.
+ */
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("./assets/plus-jakarta-sans-latin-wght-normal.woff2") format("woff2");
+}
+
+:root[data-hydrodactyl-theme="true"] {
+  --font-sans: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --hydro-sidebar-width: 128px;
+}
+
+:root[data-hydrodactyl-theme="true"] body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+:root[data-hydrodactyl-theme="true"] :is(h1, h2, h3, h4) {
+  letter-spacing: -0.035em;
+  line-height: 1.25;
+}
+
+:root[data-hydrodactyl-theme="true"]
+  :is(.mantine-Card-root, .mantine-Paper-root, .mantine-Modal-content, .mantine-Drawer-content) {
+  background: var(--hydro-surface);
+  border-color: var(--mantine-color-default-border);
+}
+
+:root[data-hydrodactyl-theme="true"] .hydro-card {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+:root[data-hydrodactyl-theme="true"] .hydro-card-heading {
+  background: var(--hydro-surface-raised);
+}
+
+:root[data-hydrodactyl-theme="true"] .hydro-button {
+  min-height: 2.5rem;
+  font-weight: 500 !important;
+  border-radius: 0.75rem;
+}
+
+:root[data-hydrodactyl-theme="true"] .hydro-button[data-variant="filled"][data-mantine-color="cream"] {
+  background: var(--hydro-primary);
+  color: var(--hydro-primary-text);
+}
+
+:root[data-hydrodactyl-theme="true"]
+  :is(.mantine-Button-root, .mantine-ActionIcon-root, .mantine-Input-input):focus-visible {
+  outline: 2px solid var(--hydro-accent);
+  outline-offset: 3px;
+}
+
+:root[data-hydrodactyl-theme="true"] .mantine-Input-input {
+  background: var(--hydro-surface-raised);
+  border-color: var(--mantine-color-default-border);
+  border-radius: 0.75rem;
+}
+
+:root[data-hydrodactyl-theme="true"] :is(.mantine-Menu-dropdown, .mantine-Popover-dropdown, .mantine-Select-dropdown) {
+  background: var(--hydro-surface-raised);
+  border: 1px solid var(--mantine-color-default-border);
+  box-shadow: 0 12px 40px #00000024;
+}
+
+:root[data-hydrodactyl-theme="true"] :is(.mantine-Table-th, .mantine-Table-td) {
+  border-color: var(--mantine-color-default-border);
+  padding-block: 0.85rem;
+}
+
+:root[data-hydrodactyl-theme="true"] .mantine-Table-th {
+  color: var(--mantine-color-dimmed);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+:root[data-hydrodactyl-theme="true"] .mantine-Tabs-list {
+  gap: 0.35rem;
+  padding: 0.35rem;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 1rem;
+  background: var(--hydro-surface);
+}
+
+:root[data-hydrodactyl-theme="true"] .mantine-Tabs-tab {
+  color: var(--mantine-color-dimmed);
+  border: 0;
+  border-radius: 0.75rem;
+}
+
+:root[data-hydrodactyl-theme="true"] .mantine-Tabs-tab[data-active] {
+  background: var(--hydro-highlight);
+  color: var(--mantine-color-text);
+}
+
+:root[data-hydrodactyl-theme="true"] :is(#dashboard-root, #server-root, #admin-root) {
+  background: var(--mantine-color-body);
+}
+
+/* Modern layout port: AppHeader, Sidebar/NavItem, UnifiedRouter, PageContentBlock. */
+.hydro-app-header {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 24px 16px 0;
+  background: var(--mantine-color-body);
+  color: var(--mantine-color-text);
+}
+.hydro-header-brand {
+  width: 128px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px 0 32px;
+}
+.hydro-app-header[data-collapsed="false"] .hydro-header-brand {
+  width: 300px;
+}
+.hydro-logo-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+.hydro-brand-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex: none;
+}
+.hydro-app-header[data-collapsed="false"] .hydro-brand-logo[data-banner="true"],
+.hydro-auth-hero .hydro-brand-logo[data-banner="true"] {
+  width: auto;
+  max-width: 160px;
+}
+.hydro-logo-link:has(.hydro-brand-logo[data-banner="true"]) > span,
+.hydro-auth-hero > div:has(.hydro-brand-logo[data-banner="true"]) > span {
+  display: none;
+}
+.hydro-logo-link span {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hydro-app-header[data-collapsed="true"] .hydro-logo-link span {
+  display: none;
+}
+.hydro-sidebar-toggle,
+.hydro-search-button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--hydro-highlight);
+  color: var(--mantine-color-text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex: none;
+}
+.hydro-search-button {
+  background: transparent;
+}
+.hydro-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+  min-width: 0;
+}
+.hydro-server-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-width: 0;
+}
+.hydro-header-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  font-size: 16px;
+}
+.hydro-header-name > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 20vw;
+}
+.hydro-state-dot {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  background: #f43f5e;
+  border-radius: 999px;
+}
+.hydro-state-dot[data-state="running"] {
+  background: #22c55e;
+}
+.hydro-state-dot:is([data-state="starting"], [data-state="stopping"]) {
+  background: #facc15;
+}
+.hydro-header-stats {
+  border-left: 1px solid #fff6eb9c;
+  padding-left: 24px;
+  display: flex;
+  gap: 16px;
+  white-space: nowrap;
+}
+.hydro-header-stats > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 56px;
+}
+.hydro-header-stats span {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #fff1e080;
+}
+.hydro-header-stats strong {
+  font-size: 14px;
+  font-weight: 400;
+}
+.hydro-header-page {
+  font-size: 14px;
+  font-weight: 500;
+}
+.hydro-user-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 6px;
+  height: 36px;
+  border: 1px solid #ffffff11;
+  border-radius: 999px;
+  background: var(--hydro-highlight);
+  color: var(--mantine-color-text);
+  cursor: pointer;
+  font-size: 14px;
+}
+.hydro-user-button > span {
+  max-width: 16rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hydro-user-extras {
+  padding: 8px;
+}
+.hydro-sidebar {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  color: var(--mantine-color-text);
+  background: var(--mantine-color-body);
+}
+.hydro-sidebar-desktop {
+  position: sticky;
+  top: 0;
+  width: 128px;
+  height: 100dvh;
+  padding: 64px 32px 24px;
+  border: 0;
+  transition: width 400ms cubic-bezier(0.23, 1.2, 0.32, 1);
+}
+.hydro-sidebar-desktop[data-collapsed="false"] {
+  width: 300px;
+}
+/* Admin labels need more space than the short server tabs in the source rail. */
+.hydro-sidebar-desktop[data-admin="true"][data-collapsed="true"] {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.hydro-sidebar-desktop[data-admin="true"][data-collapsed="true"] .hydro-nav-link {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 4px;
+}
+.hydro-sidebar-desktop[data-admin="true"][data-collapsed="true"] .mantine-Button-label {
+  font-size: 11px;
+}
+.hydro-sidebar .hydro-nav-link :is(.mantine-Button-inner, .mantine-Button-label) {
+  width: 100%;
+  min-width: 0;
+}
+.hydro-sidebar-navigation {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+}
+.hydro-sidebar-navigation::-webkit-scrollbar {
+  display: none;
+}
+.hydro-sidebar-navigation > a {
+  flex-shrink: 0;
+}
+.hydro-sidebar-utility {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 16px;
+}
+.hydro-sidebar .hydro-nav-link {
+  width: 100%;
+  height: 64px;
+  min-height: 64px;
+  padding: 4px 0;
+  margin: 0 0 4px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #fff1e066;
+  font-weight: 500 !important;
+  box-shadow: none;
+}
+/* Long utility labels must grow instead of clipping at the short-tab height. */
+.hydro-sidebar[data-collapsed="true"] .hydro-nav-link {
+  height: auto;
+  padding: 8px 4px;
+  flex-shrink: 0;
+}
+.hydro-sidebar .hydro-nav-link .mantine-Button-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  white-space: nowrap;
+  justify-content: center;
+  font-size: 12px;
+}
+.hydro-sidebar .hydro-nav-link svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+.hydro-sidebar .hydro-nav-link:is(:hover, .active) {
+  color: var(--mantine-color-text);
+  background: var(--hydro-highlight);
+  border-color: #433b32;
+}
+.hydro-sidebar[data-collapsed="false"] .hydro-nav-link {
+  height: 40px;
+  min-height: 40px;
+  padding-left: 12px;
+}
+.hydro-sidebar[data-collapsed="false"] .hydro-nav-link .mantine-Button-label {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 8px;
+  font-size: 14px;
+}
+.hydro-sidebar-mobile {
+  height: calc(100dvh - 64px);
+  padding: 16px 24px;
+}
+.hydro-mobile-toggle,
+.hydro-mobile-power,
+.hydro-bottom-nav {
+  display: none !important;
+}
+:root[data-hydrodactyl-theme="true"] :is(#dashboard-root, #server-root, #admin-root) {
+  padding: 64px 24px 24px 0;
+  height: 100dvh;
+  min-height: 0;
+  overflow: auto;
+}
+.hydro-workspace {
+  container: hydro-workspace / inline-size;
+  width: 100%;
+  max-width: 120rem;
+  margin: 0 auto;
+  padding: 28px;
+  min-width: 0;
+  background: var(--hydro-surface);
+  border: 1px solid #29241f;
+  border-radius: 16px;
+}
+.hydro-workspace > .px-4 {
+  margin: 0;
+  padding: 0;
+}
+.hydro-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+.hydro-page-title {
+  min-width: 0;
+}
+.hydro-page-title :is(h1, h2, h3, h4, h5, h6) {
+  font-size: 52px;
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: -0.14rem;
+  overflow-wrap: anywhere;
+}
+.hydro-page-title p {
+  font-size: 14px;
+  color: var(--mantine-color-dimmed);
+  margin-top: 12px;
+}
+.hydro-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+}
+.hydro-page-search {
+  width: 250px;
+  max-width: 100%;
+}
+.hydro-page-body {
+  min-width: 0;
+}
+.hydro-workspace[data-section="console"] {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  height: calc(100dvh - 88px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.hydro-workspace[data-section="console"] > .px-4 {
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+}
+.hydro-workspace[data-section="console"] .hydro-page-body {
+  height: 100%;
+  min-height: 0;
+}
+.hydro-console-layout {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  gap: 16px;
+}
+.hydro-console-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.hydro-console-terminal {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+:root[data-hydrodactyl-theme="true"] .hydro-console-terminal > .mantine-Card-root {
+  height: 100%;
+  padding: 16px !important;
+  border: 1px solid #ffffff11;
+  border-radius: 12px;
+  background: var(--hydro-surface);
+  box-shadow: none;
+}
+.hydro-console-terminal > .mantine-Card-root > div:first-child {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+}
+.hydro-console-terminal > .mantine-Card-root > div:first-child > div:first-child {
+  display: none;
+}
+.hydro-console-terminal:is(:hover, :focus-within) > .mantine-Card-root > div:first-child {
+  opacity: 1;
+  pointer-events: auto;
+}
+.hydro-console-graphs {
+  width: 300px;
+  flex: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+  min-height: 0;
+}
+.hydro-stat-graphs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.hydro-detail-card,
+.hydro-source-chart {
+  padding: 16px;
+  border: 1px solid #ffffff11;
+  border-radius: 12px;
+  background: var(--hydro-surface);
+  font-size: 14px;
+}
+.hydro-detail-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.hydro-detail-card h3,
+.hydro-source-chart h3 {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 20px;
+}
+.hydro-description-card {
+  flex-direction: column;
+}
+.hydro-source-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hydro-source-chart > div {
+  position: relative;
+  height: 170px;
+  min-width: 0;
+  overflow: hidden;
+}
+.hydro-power-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+:root[data-hydrodactyl-theme="true"] .hydro-power-buttons .hydro-button {
+  min-height: 32px;
+  height: 32px;
+  border-radius: 999px;
+  color: var(--mantine-color-text);
+  background: var(--hydro-highlight);
+  border: 1px solid #ffffff11;
+  font-size: 14px;
+  font-weight: 400 !important;
+  padding: 4px 12px;
+}
+:root[data-hydrodactyl-theme="true"] .hydro-power-buttons .hydro-power-icon {
+  width: 32px;
+  padding: 4px;
+}
+.hydro-power-buttons .mantine-Button-label {
+  display: flex;
+  gap: 6px;
+}
+.hydro-power-buttons button:disabled {
+  opacity: 0.4;
+}
+/* ServerRow: upstream horizontal identity/status plus compact resource box. */
+.hydro-workspace[data-section="servers"][data-view="list"] .grid:has(> div > div > a > .hydro-server-row) {
+  grid-template-columns: minmax(0, 1fr);
+}
+:root[data-hydrodactyl-theme="true"] .hydro-server-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 28px 32px 28px 44px;
+  border-radius: 12px !important;
+  background: var(--hydro-surface-raised);
+}
+.hydro-server-row > .absolute {
+  top: 34px;
+  left: 16px;
+  width: 12px;
+  height: 12px;
+  border-radius: 100%;
+}
+.hydro-server-row .hydro-server-identity > div {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.hydro-server-identity .text-xl {
+  font-weight: 700;
+}
+.hydro-server-identity .hydro-card {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+.hydro-server-resources {
+  padding: 8px 16px;
+  border: 1px solid #ffffff11;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+:root[data-hydrodactyl-theme="true"] .hydro-workspace[data-view="grid"] .hydro-server-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+.hydro-workspace[data-section="profile"] .hydro-page-body > .grid,
+.hydro-workspace[data-section="settings"] .hydro-page-body > .grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.hydro-workspace #title-card-header {
+  background: transparent;
+  padding: 20px;
+}
+.hydro-auth {
+  background: var(--mantine-color-body);
+}
+.hydro-auth .m-auto {
+  max-width: 28rem;
+  padding: 32px;
+  background: var(--hydro-surface);
+  border: 1px solid #fff1e01a;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px #00000066;
+}
+.hydro-auth form,
+.hydro-auth .hydro-card {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.hydro-preview-card {
+  padding: 24px;
+  background: var(--hydro-surface-raised);
+  border-radius: 12px;
+}
+.hydro-configuration {
+  max-width: 40rem;
+}
+.hydro-status-pill {
+  border-radius: 999px;
+  padding: 4px 10px;
+  color: var(--mantine-color-green-text);
+  background: var(--mantine-color-green-light);
+  font-size: 12px;
+}
+@container hydro-workspace (max-width: 45rem) {
+  :root[data-hydrodactyl-theme="true"] .hydro-server-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hydro-server-resources {
+    white-space: normal;
+  }
+}
+@media (max-width: 1023px) {
+  .hydro-sidebar-desktop,
+  .hydro-header-brand,
+  .hydro-desktop-power {
+    display: none;
+  }
+  .hydro-app-header {
+    padding: 12px 16px;
+    gap: 12px;
+  }
+  .hydro-mobile-toggle,
+  .hydro-mobile-power {
+    display: flex !important;
+  }
+  .hydro-bottom-nav {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 50;
+    display: flex !important;
+    overflow-x: auto;
+    gap: 4px;
+    padding: 0 4px env(safe-area-inset-bottom);
+    height: calc(56px + env(safe-area-inset-bottom));
+    border-top: 1px solid #29241f;
+    background: var(--mantine-color-body);
+    scrollbar-width: none;
+  }
+  .hydro-bottom-nav a {
+    min-width: 72px;
+    flex: 1;
+  }
+  .hydro-bottom-nav .hydro-nav-link {
+    width: 100%;
+    height: 56px;
+    padding: 8px 4px;
+    background: transparent;
+    color: var(--mantine-color-dimmed);
+    border: 0;
+  }
+  .hydro-bottom-nav .mantine-Button-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 10px;
+  }
+  .hydro-bottom-nav .active {
+    color: #fa4e49;
+  }
+  :root[data-hydrodactyl-theme="true"] :is(#dashboard-root, #server-root, #admin-root) {
+    padding: 72px 16px 80px;
+    height: auto;
+    min-height: 100dvh;
+  }
+  .hydro-header-stats {
+    display: none;
+  }
+  .hydro-header-name > span:last-child {
+    max-width: 40vw;
+    font-size: 14px;
+  }
+  .hydro-user-button > span {
+    display: none;
+  }
+  .hydro-workspace {
+    padding: 20px;
+  }
+  .hydro-workspace[data-section="console"] {
+    height: auto;
+    overflow: visible;
+  }
+  .hydro-console-layout {
+    flex-direction: column;
+  }
+  .hydro-console-terminal {
+    height: 65dvh;
+    min-height: 20rem;
+    flex: auto;
+  }
+  .hydro-console-graphs {
+    width: 100%;
+    overflow: visible;
+  }
+  .hydro-stat-graphs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hydro-title-hoisted {
+    display: none;
+  }
+  .hydro-page-heading:has(> .hydro-title-hoisted):not(:has(.hydro-page-actions)) {
+    display: none;
+  }
+}
+@media (min-width: 1024px) {
+  :root[data-hydrodactyl-theme="true"] body:has(:is(#dashboard-root, #server-root, #admin-root)) {
+    overflow: hidden;
+  }
+}
+@media (max-width: 639px) {
+  .hydro-stat-graphs,
+  .hydro-workspace[data-section="profile"] .hydro-page-body > .grid,
+  .hydro-workspace[data-section="settings"] .hydro-page-body > .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hydro-page-heading {
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .hydro-page-title :is(h1, h2, h3, h4, h5, h6) {
+    font-size: 36px;
+  }
+  .hydro-workspace[data-section="profile"] .hydro-page-body > .grid > * {
+    grid-column: auto;
+  }
+  .hydro-auth .m-auto {
+    max-width: calc(100% - 24px);
+    padding: 24px;
+  }
+}
+:root[data-hydrodactyl-theme="true"][data-mantine-color-scheme="light"]
+  :is(.hydro-header-stats span, .hydro-sidebar .hydro-nav-link) {
+  color: var(--mantine-color-dimmed);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hydro-sidebar-desktop {
+    transition: none;
+  }
+}
+/* Console is a full-height workspace; the source shell has no footer below it. */
+:root[data-hydrodactyl-theme="true"] #server-root:has(.hydro-workspace[data-section="console"]) .my-2.ml-auto {
+  display: none;
+}
+/* Source ui/input, ui/button, TitledGreyBox and dialog panels. */
+:root[data-hydrodactyl-theme="true"] .mantine-Input-input {
+  border-radius: 999px;
+  background: #14110f;
+  border-color: #29241f;
+  font-size: 14px;
+}
+:root[data-hydrodactyl-theme="true"] textarea.mantine-Input-input {
+  border-radius: 12px;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Input-input::placeholder {
+  color: #fff1e04d;
+}
+:root[data-hydrodactyl-theme="true"] .hydro-button[data-variant="default"] {
+  background: var(--hydro-highlight);
+  border-color: var(--mantine-color-default-border);
+  color: #fff1e0;
+}
+:root[data-hydrodactyl-theme="true"] .hydro-button[data-variant="default"]:hover {
+  background: var(--mantine-color-dark-4);
+}
+.hydro-titled-grey-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 32px;
+  overflow: hidden;
+  border: 1px solid #ffffff07;
+  border-radius: 12px;
+  background: #ffffff08;
+  box-shadow: none;
+}
+.hydro-grey-box-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.hydro-grey-box-title h3 {
+  flex: 1;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+.hydro-grey-box-title svg {
+  width: 20px;
+  height: 20px;
+  opacity: 0.6;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Modal-content {
+  border: 1px solid #ffffff07;
+  border-radius: 16px;
+  background: linear-gradient(0deg, #00000080, #00000080), #ffffff1f;
+  backdrop-filter: blur(64px);
+  box-shadow: 0 25px 50px #00000040;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Modal-header {
+  background: transparent;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Modal-title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+/* Resource rows use the source ItemContainer surface and list spacing while retaining every panel column and action. */
+.hydro-workspace[data-scope="server"] :is(.mantine-Table-table, .mantine-Table-root) {
+  border-collapse: separate;
+  border-spacing: 0 12px;
+  background: transparent;
+}
+.hydro-workspace[data-scope="server"] .mantine-Table-tbody .mantine-Table-td {
+  padding: 16px;
+  background: #3333332a;
+  border-top: 1px solid #ffffff0e;
+  border-bottom: 1px solid #ffffff0e;
+}
+.hydro-workspace[data-scope="server"] .mantine-Table-td:first-child {
+  border-left: 1px solid #ffffff0e;
+  border-radius: 8px 0 0 8px;
+}
+.hydro-workspace[data-scope="server"] .mantine-Table-td:last-child {
+  border-right: 1px solid #ffffff0e;
+  border-radius: 0 8px 8px 0;
+}
+.hydro-workspace[data-section="files"] {
+  padding: 0;
+}
+.hydro-workspace[data-section="files"] [data-file-manager-page] {
+  padding: 24px 32px;
+}
+:root[data-hydrodactyl-theme="true"][data-mantine-color-scheme="light"] .mantine-Input-input {
+  background: #fffdfa;
+  border-color: #e8ddd1;
+}
+:root[data-hydrodactyl-theme="true"][data-mantine-color-scheme="light"] .mantine-Input-input::placeholder {
+  color: #78695a;
+}
+:root[data-hydrodactyl-theme="true"][data-mantine-color-scheme="light"] .mantine-Modal-content {
+  background: #fff8f0;
+}
+@media (max-width: 639px) {
+  .hydro-titled-grey-box {
+    padding: 24px;
+  }
+  .hydro-workspace[data-section="files"] [data-file-manager-page] {
+    padding: 16px;
+  }
+}
+
+/* Modern dashboard HeaderCentered/SearchSection and resource page toolbars. */
+.hydro-header-center {
+  min-width: 0;
+  flex: 1;
+  max-width: 54vw;
+}
+.hydro-header-center > .mantine-Group-root {
+  margin: 0;
+  flex-wrap: nowrap;
+  gap: 24px;
+}
+.hydro-header-center .mantine-Switch-root {
+  flex-shrink: 0;
+}
+.hydro-mobile-filters {
+  display: none;
+}
+.hydro-workspace[data-section="servers"] {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.hydro-workspace[data-resource="true"] {
+  padding: 0;
+}
+.hydro-workspace[data-resource="true"] .hydro-page-heading {
+  margin: 0;
+  padding: 40px 56px 24px;
+  gap: 24px;
+}
+.hydro-workspace[data-resource="true"] .hydro-page-title h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  overflow: hidden;
+}
+.hydro-workspace[data-resource="true"] .hydro-page-title p {
+  font-size: 14px;
+  margin: 0;
+  font-weight: 400;
+  color: #a1a1aa;
+}
+.hydro-workspace[data-resource="true"] .hydro-page-body {
+  padding: 0 56px 32px;
+}
+.hydro-resource-list {
+  position: relative;
+  width: 100%;
+}
+.hydro-resource-select-all {
+  margin: 0 0 8px 8px;
+}
+.hydro-workspace .hydro-resource-table {
+  width: 100%;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0 12px;
+}
+.hydro-workspace .hydro-resource-table .mantine-Table-td {
+  border: 0;
+  background: transparent;
+  white-space: normal;
+  padding: 0;
+}
+.hydro-workspace .hydro-resource-table .mantine-Table-td:first-child {
+  border: 0;
+  border-radius: 0;
+}
+.hydro-workspace .hydro-resource-table .mantine-Table-td:last-child {
+  border: 0;
+  border-radius: 0;
+}
+.hydro-resource-row {
+  transition: background 150ms;
+}
+.hydro-resource-row:hover {
+  background: #ffffff04;
+}
+.hydro-resource-row > td:has(.mantine-Checkbox-root) {
+  width: 28px;
+  padding-right: 12px !important;
+}
+.hydro-resource-row > td:last-child:has(.fa-ellipsis) {
+  width: 28px;
+  color: #71717a;
+}
+.hydro-resource-row > td:last-child:has(.fa-ellipsis):hover {
+  color: #fff;
+}
+.hydro-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 0;
+}
+.hydro-item-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #ffffff11;
+  color: #a1a1aa;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+.hydro-item-copy {
+  flex: 1;
+  min-width: 0;
+}
+.hydro-item-copy h3 {
+  margin: 0 0 6px;
+  font:
+    500 14px / 20px "Plus Jakarta Sans",
+    sans-serif;
+  color: #f4f4f5;
+  overflow-wrap: anywhere;
+}
+.hydro-item-copy p {
+  color: #a1a1aa;
+  font-size: 12px;
+  line-height: 18px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.hydro-item-copy > button {
+  max-width: 100%;
+  text-align: left;
+}
+.hydro-item-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.hydro-item-title h3 {
+  margin: 0;
+}
+.hydro-item-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: #71717a;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.hydro-item-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  min-width: 68px;
+  justify-content: end;
+}
+.hydro-item-actions .mantine-Button-root {
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  border-radius: 12px;
+}
+.hydro-item-actions .mantine-Button-root[data-variant="filled"][data-color="red"] {
+  background: #fe7e8566;
+  color: #1b1815;
+}
+.hydro-primary-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #fe7e851a;
+  color: #fe7e85;
+  font-size: 12px;
+}
+.hydro-mfa-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border: 1px solid #71717a4d;
+  border-radius: 4px;
+  color: #a1a1aa;
+  background: #71717a33;
+}
+.hydro-mfa-badge.enabled {
+  color: #86efac;
+  border-color: #22c55e4d;
+  background: #22c55e33;
+}
+.hydro-schedule-icon {
+  background: transparent;
+  color: #e4e4e7;
+}
+.hydro-schedule-badge {
+  margin-left: auto;
+  text-transform: uppercase;
+}
+.hydro-item-copy:has(+ .hydro-schedule-badge) h3 {
+  font-size: 18px;
+}
+.hydro-allocation-notes .mantine-Textarea-input {
+  min-height: 24px;
+  padding: 2px 0;
+  border-color: transparent;
+  background: transparent;
+  font-size: 12px;
+  color: #71717a;
+}
+.hydro-allocation-notes .mantine-Textarea-input:focus {
+  padding: 8px;
+  background: #ffffff06;
+  border-color: #ffffff20;
+  color: #d4d4d8;
+}
+.hydro-resource-empty .hydro-empty-state {
+  min-height: 60vh;
+}
+.hydro-loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.hydro-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  text-align: center;
+}
+.hydro-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #ffffff11;
+  color: #a1a1aa;
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+  font-size: 28px;
+}
+.hydro-empty-state h3 {
+  font-size: 18px;
+  font-weight: 500;
+  color: #e4e4e7;
+  margin: 0 0 8px;
+}
+.hydro-empty-state p {
+  max-width: 320px;
+  font-size: 14px;
+  color: #a1a1aa;
+  line-height: 1.6;
+  margin: 0;
+}
+.hydro-empty-actions {
+  margin-top: 24px;
+}
+.hydro-screen-block {
+  width: 100%;
+  min-height: 50vh;
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  padding: 32px;
+  max-width: 768px;
+  margin: auto;
+}
+.hydro-screen-block > div {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 384px;
+}
+.hydro-screen-block h1 {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: -0.11rem;
+}
+.hydro-screen-block p {
+  color: var(--hydro-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Radix Tabs, SwitchV2, CheckboxNew, dropdown menus and dialog source values. */
+:root[data-hydrodactyl-theme="true"] .mantine-Tabs-list {
+  align-items: center;
+  padding: 4px;
+  background: #ffffff11;
+  border: 0;
+  border-radius: 8px;
+  gap: 0;
+}
+/* Keep native route-link tabs and direct tabs inside the same scrollable row. */
+:root[data-hydrodactyl-theme="true"] .mantine-Tabs-root {
+  min-width: 0;
+  max-width: 100%;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Tabs-list[data-orientation="horizontal"] {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  min-height: 36px;
+  height: auto;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Tabs-list[data-orientation="horizontal"]::-webkit-scrollbar {
+  display: none;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Tabs-list[data-orientation="horizontal"] > :is(a, button) {
+  flex-shrink: 0;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Tabs-list[data-orientation="horizontal"] .mantine-Tabs-tab {
+  white-space: nowrap;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Tabs-tab {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 6px;
+  color: #ffffff88;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Tabs-tab[data-active] {
+  background: #ffffff23;
+  color: #fff;
+  box-shadow: 0 1px 2px #0003;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Tabs-panel {
+  padding-top: 8px;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Switch-track {
+  --switch-width: 56px;
+  --switch-height: 28px;
+  --switch-thumb-size: 24px;
+  --switch-track-label-padding: 2px;
+  width: 56px;
+  height: 28px;
+  border: 0;
+  background: linear-gradient(#ffffff0f, #ffffff0a);
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Switch-thumb {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #ffffffcf, #ffffffa1);
+  box-shadow: 0 4px 6px #0003;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Switch-input:checked + .mantine-Switch-track {
+  background: #fe7e85b3;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Checkbox-input {
+  border-radius: 6px;
+  border-width: 2px;
+  border-color: #ffffff55;
+  background: transparent;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Checkbox-input:checked {
+  background: #fe7e85;
+  border-color: #fe7e85;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Menu-dropdown {
+  border-radius: 12px;
+  padding: 4px;
+  background: #1b1815;
+  border: 1px solid #433b32;
+  box-shadow: 0 8px 16px #0006;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Menu-item {
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Menu-item:hover {
+  background: #29241f;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Menu-divider {
+  border-color: #433b32;
+  margin: 4px -4px;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Modal-header {
+  background: transparent;
+  padding: 24px 24px 8px;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Modal-body {
+  padding: 0 24px 24px;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Modal-close {
+  border-radius: 50%;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Modal-close:hover svg {
+  transform: rotate(90deg);
+  transition: transform 100ms;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-InputWrapper-label {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: #e4e4e7;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-InputWrapper-description {
+  font-size: 12px;
+  color: #a1a1aa;
+  line-height: 1.6;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Input-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Input-input:focus {
+  outline: none;
+  border-color: #b5a795;
+  box-shadow: 0 0 0 1px #b5a795;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Button-root:active:not(:disabled) {
+  transform: translateY(2px) scale(0.98);
+}
+.hydro-workspace[data-section="files"] .hydro-page-body {
+  padding: 0;
+}
+@media (min-width: 768px) {
+  .hydro-search-button {
+    display: none;
+  }
+}
+@media (max-width: 767px) {
+  .hydro-header-center {
+    display: none;
+  }
+  .hydro-mobile-filters {
+    display: block;
+  }
+  .hydro-workspace[data-section="servers"] {
+    padding: 16px;
+  }
+  .hydro-workspace[data-resource="true"] .hydro-page-heading {
+    padding: 20px 16px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .hydro-workspace[data-resource="true"] .hydro-page-body {
+    padding: 0 16px 24px;
+  }
+  .hydro-workspace[data-section="files"] .hydro-page-body {
+    padding: 0;
+  }
+  .hydro-item-actions {
+    gap: 4px;
+    min-width: 0;
+  }
+  .hydro-item-actions .mantine-Button-root {
+    width: 32px;
+    height: 32px;
+    padding: 5px;
+  }
+  .hydro-item {
+    gap: 8px;
+  }
+  .hydro-schedule-badge {
+    display: none;
+  }
+  .hydro-resource-empty .hydro-empty-state {
+    min-height: 50vh;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-hydrodactyl-theme="true"] .mantine-Button-root:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Startup VariableBox, SettingsContainer, AccountOverview and FileManager source layouts. */
+.hydro-workspace .hydro-settings-stack,
+.hydro-workspace .hydro-account-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.hydro-settings-extra {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.hydro-account-stack .hydro-titled-grey-box {
+  background: #1d1816;
+  border: 1px solid #29241f;
+}
+.hydro-account-stack .hydro-grey-box-title h3 {
+  font-size: 24px;
+}
+.hydro-global-variables {
+  margin-top: 24px;
+  padding: 16px;
+  background: linear-gradient(#ffffff04, #ffffff02);
+  border: 1px solid #ffffff08;
+  border-radius: 12px;
+}
+.hydro-global-variables h4 {
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #d4d4d4;
+}
+.hydro-global-variables > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.hydro-global-variables > div > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: #ffffff06;
+  border: 1px solid #ffffff08;
+  font-size: 12px;
+  min-width: 0;
+}
+.hydro-global-variables code {
+  color: #a3a3a3;
+  font-family: monospace;
+}
+.hydro-global-variables button {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hydro-global-variables button code {
+  color: #d4d4d4;
+}
+.hydro-workspace .hydro-variable-box {
+  padding: 24px;
+  background: linear-gradient(#ffffff08, #ffffff04);
+  border: 1px solid #ffffff10;
+  border-radius: 12px;
+}
+.hydro-variable-box .hydro-grey-box-title {
+  margin-bottom: 4px;
+}
+.hydro-variable-box .hydro-grey-box-title h3 {
+  font-size: 18px;
+  color: #e5e5e5;
+}
+.hydro-variable-name {
+  display: block;
+  font-size: 12px;
+  line-height: 20px;
+  color: #737373;
+  margin-bottom: 16px;
+}
+.hydro-variable-box :is(.mantine-Input-input, .mantine-Select-input) {
+  border-radius: 12px;
+  background: linear-gradient(#ffffff10, #ffffff09);
+  border: 1px solid #ffffff15;
+  height: 48px;
+  font-family: monospace;
+}
+.hydro-details-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+  margin-top: 8px;
+}
+.hydro-details-line code {
+  background: #18181b;
+  padding: 4px 8px;
+  border-radius: 2px;
+  overflow-wrap: anywhere;
+}
+.hydro-sftp-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+.hydro-sftp-footer p {
+  flex: 1;
+  border-left: 4px solid #fa4e49;
+  padding: 12px;
+  font-size: 12px;
+  color: #e4e4e7;
+}
+.hydro-sftp-footer a {
+  flex-shrink: 0;
+}
+.hydro-cron-triggers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 8px 0 8px 48px;
+}
+.hydro-cron-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  text-align: center;
+}
+.hydro-cron-row p {
+  font-weight: 500;
+  font-size: 14px;
+}
+.hydro-cron-row span {
+  font-size: 12px;
+  color: #71717a;
+  text-transform: uppercase;
+}
+.hydro-trigger-badge {
+  font-size: 12px;
+  color: #a1a1aa;
+  text-transform: capitalize;
+  background: #ffffff06;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.hydro-checksum {
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hydro-file-manager > .mantine-Group-root {
+  padding: 32px 24px 0;
+}
+.hydro-file-manager h1 {
+  display: none;
+}
+.hydro-file-toolbar {
+  gap: 4px;
+}
+.hydro-file-toolbar > .mantine-Button-root:has(> .mantine-Button-inner > .mantine-Button-label > svg:only-child) {
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+}
+.hydro-file-manager .hydro-file-breadcrumbs {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  margin: 16px 0;
+}
+.hydro-file-manager .mantine-Table-table {
+  border-spacing: 0 2px;
+}
+.hydro-file-manager .hydro-file-row {
+  height: 54px;
+  background: var(--hydro-file-row);
+  border: 0;
+}
+.hydro-file-manager .hydro-file-row:hover {
+  background: var(--hydro-file-row-hover);
+}
+.hydro-file-manager .hydro-file-row .mantine-Table-td {
+  border-radius: 0;
+  background: inherit;
+  border-top: 1px solid var(--hydro-file-border);
+  border-bottom: 1px solid var(--hydro-file-border);
+  padding-block: 8px;
+  color: #e4e4e7;
+}
+.hydro-file-manager .hydro-file-row .mantine-Table-td:first-child {
+  border-left: 1px solid var(--hydro-file-border);
+  border-radius: 4px 0 0 4px;
+}
+.hydro-file-manager .hydro-file-row .mantine-Table-td:last-child {
+  border-right: 1px solid var(--hydro-file-border);
+  border-radius: 0 4px 4px 0;
+}
+.hydro-file-manager .mantine-Table-root:has(.hydro-file-row),
+.hydro-file-manager .mantine-Table-table:has(.hydro-file-row) {
+  padding: 4px;
+  border: 1px solid #ffffff12;
+  border-radius: 12px;
+  background: radial-gradient(124.75% 124.75% at 50.01% -10.55%, #101010, #040404);
+}
+@media (max-width: 767px) {
+  .hydro-workspace .hydro-settings-stack,
+  .hydro-workspace .hydro-account-stack {
+    gap: 16px;
+  }
+  .hydro-settings-extra {
+    grid-template-columns: 1fr;
+  }
+  .hydro-global-variables > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hydro-variable-box {
+    padding: 16px !important;
+  }
+  .hydro-sftp-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .hydro-details-line {
+    align-items: flex-start;
+  }
+  .hydro-file-manager > .mantine-Group-root {
+    padding: 16px 8px 0;
+  }
+  .hydro-cron-triggers {
+    margin-left: 0;
+  }
+}
+
+/* AuthenticationRouter's split desktop surface and LoginFormContainer card. */
+.hydro-auth-layout {
+  display: flex;
+  width: 100%;
+  height: var(--auth-page-height, 100dvh);
+  background: #0c0a09;
+  overflow: hidden;
+}
+.hydro-auth-left {
+  flex: 1;
+  max-width: 896px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: 32px 96px;
+  overflow: auto;
+}
+.hydro-auth-card {
+  width: 100%;
+  max-width: 448px;
+  margin: auto;
+}
+.hydro-auth-card > .mantine-Card-root {
+  padding: 32px;
+  border-radius: 16px;
+  background: #110f0d;
+  border: 1px solid #ffedd91a;
+  box-shadow: 0 20px 25px #0006;
+}
+.hydro-auth-card .mantine-Title-root {
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.25;
+  margin-bottom: 24px;
+}
+.hydro-auth-card :is(.mantine-Stack-root, form) {
+  gap: 24px;
+}
+.hydro-auth-card > .mantine-Card-root > .mantine-Card-root {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+.hydro-auth-card > h1 {
+  font-size: 30px;
+  font-weight: 500;
+}
+.hydro-auth-hero {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  background:
+    linear-gradient(45deg, transparent, #f06f530d, #b950361a),
+    linear-gradient(135deg, #b950361a, #f06f530d, transparent);
+}
+.hydro-auth-hero > div {
+  position: absolute;
+  top: 32px;
+  right: 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 24px;
+  font-size: 18px;
+}
+.hydro-auth-hero svg {
+  width: 24px;
+  height: 24px;
+}
+.hydro-auth-hero span {
+  border-left: 1px solid #e5e7eb;
+  padding-left: 16px;
+}
+.hydro-auth-layout .my-2.ml-auto {
+  display: none;
+}
+.hydro-activity-list {
+  background: linear-gradient(#ffffff08, #ffffff05);
+  border: 1px solid #ffffff12;
+  border-radius: 12px;
+  padding: 16px;
+}
+.hydro-activity-list > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.hydro-activity-list > header svg {
+  color: #a1a1aa;
+}
+.hydro-activity-list h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.hydro-activity-list > header span {
+  color: #a1a1aa;
+  font-size: 14px;
+}
+.hydro-activity-list .hydro-resource-table {
+  border-spacing: 0;
+}
+.hydro-activity-row:not(:last-child) {
+  border-bottom: 1px solid #27272a4d;
+}
+.hydro-activity-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+}
+.hydro-activity-copy {
+  flex: 1;
+  min-width: 0;
+}
+.hydro-activity-copy > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.hydro-activity-event {
+  color: #e4e4e7;
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.hydro-activity-copy p,
+.hydro-activity-copy time {
+  color: #a1a1aa;
+  font-size: 12px;
+}
+.hydro-workspace[data-section="profile"] > .px-4 .hydro-page-heading {
+  display: none;
+}
+@media (max-width: 1023px) {
+  .hydro-auth-hero {
+    display: none;
+  }
+  .hydro-auth-left {
+    max-width: none;
+    padding: 32px 24px;
+  }
+}
+@media (max-width: 639px) {
+  .hydro-auth-left {
+    align-items: flex-start;
+  }
+  .hydro-auth-card {
+    margin-top: 0;
+  }
+  .hydro-auth-card .mantine-Title-root {
+    font-size: 24px;
+  }
+  .hydro-activity-copy > div {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+/* Calagopus's optional light mode uses the same layouts with its readable palette. */
+:root[data-mantine-color-scheme="light"][data-hydrodactyl-theme="true"]
+:is(.hydro-item-copy h3, .hydro-empty-state h3, .hydro-activity-event) {
+  color: #29241f;
+}
+:root[data-mantine-color-scheme="light"][data-hydrodactyl-theme="true"]
+  :is(.hydro-item-copy p, .hydro-empty-state p, .hydro-item-meta, .hydro-activity-copy p) {
+  color: #78695a;
+}
+:root[data-mantine-color-scheme="light"][data-hydrodactyl-theme="true"]
+  :is(.hydro-variable-box, .hydro-global-variables, .hydro-activity-list) {
+  background: #fff8f0;
+  border-color: #e8ddd1;
+}
+.hydro-sftp-launch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  height: 40px;
+  padding: 8px 16px;
+  background: #29241f;
+  border: 1px solid #433b32;
+  color: #fff1e0;
+  font-size: 14px;
+  font-weight: 500;
+}
+.hydro-sftp-launch:hover {
+  background: #433b32;
+}
+.hydro-grey-box-icon {
+  display: none;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Alert-root {
+  border-radius: 12px;
+  border: 1px solid #ffffff12;
+  background: linear-gradient(#ffffff08, #ffffff04);
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Alert-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Source ServerRow, shared by flat and grouped dashboard controllers. */
+.hydro-workspace[data-section="servers"] .hydro-source-server-row {
+  padding: 28px 32px;
+  border-radius: 12px;
+  background: #1d1816;
+  border: 1px solid #29241f;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 92px;
+  overflow: visible;
+}
+.hydro-source-server-row:hover {
+  background: #29241f;
+  border-color: #ffffff11;
+}
+.hydro-source-server-identity {
+  min-width: 0;
+}
+.hydro-source-server-identity > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.hydro-source-server-identity h3 {
+  font-size: 20px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 20vw;
+}
+.hydro-source-server-identity p {
+  font-size: 14px;
+  color: #ffffff66;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hydro-server-glow {
+  display: block;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #c74343;
+  box-shadow: 0 0 12px 1px #c74343;
+}
+.hydro-source-server-row[data-state="running"] .hydro-server-glow {
+  background: linear-gradient(#91ffa9, #43c760);
+  box-shadow: 0 0 12px 1px #43c760;
+}
+.hydro-source-server-row:is([data-state="starting"], [data-state="stopping"]) .hydro-server-glow {
+  background: #c7aa43;
+  box-shadow: 0 0 12px 1px #c7aa43;
+}
+.hydro-source-server-stats {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  font-size: 14px;
+  background: #1d1816;
+  border: 1px solid #ffffff11;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.hydro-source-server-stats > div {
+  display: flex;
+  gap: 8px;
+  font-weight: 700;
+}
+.hydro-source-server-stats > div > span {
+  color: #ffffff66;
+}
+.hydro-server-wait {
+  font-size: 12px;
+  opacity: 0.25;
+}
+.hydro-server-tools {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  right: 12px;
+  bottom: 4px;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.hydro-source-server-row:is(:hover, :focus-within) .hydro-server-tools {
+  opacity: 1;
+}
+.hydro-server-owner-badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  font-size: 10px;
+  background: #fff1e01a;
+  color: #fff1e0;
+  border: 1px solid #fff1e033;
+  border-radius: 6px;
+}
+.hydro-workspace[data-section="servers"][data-view="list"] .hydro-page-body > .grid {
+  grid-template-columns: 1fr;
+}
+.hydro-workspace[data-section="servers"][data-view="grid"] .hydro-source-server-row {
+  flex-direction: column;
+  align-items: stretch;
+}
+.hydro-workspace[data-background="true"] {
+  min-height: calc(100dvh - 88px);
+}
+.hydro-workspace[data-resource="true"]
+  .hydro-resource-table
+  .mantine-Table-tbody
+  .hydro-resource-row
+  .mantine-Table-td {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.hydro-workspace[data-resource="true"] .hydro-resource-table .hydro-resource-row > td:has(.mantine-Checkbox-root) {
+  width: 28px;
+  padding-right: 12px;
+}
+.hydro-workspace[data-resource="true"] .hydro-resource-table .hydro-resource-row > td:last-child:has(.fa-ellipsis) {
+  width: 28px;
+  padding-left: 8px;
+}
+.hydro-item-copy > button {
+  display: block;
+}
+.hydro-item-copy :is(h3, p) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hydro-workspace[data-section="files"] .hydro-file-manager .hydro-file-row .mantine-Table-td {
+  padding: 8px;
+}
+.hydro-workspace[data-section="files"] .hydro-file-manager .hydro-file-row {
+  height: 54px;
+}
+.hydro-grey-box-title {
+  background: transparent !important;
+}
+:root[data-hydrodactyl-theme="true"] .hydro-button[data-variant="filled"]:not([data-disabled]):not(.hydro-nav-link) {
+  color: var(--button-color, #1d1816);
+}
+.hydro-sidebar[data-collapsed="true"] .hydro-nav-text {
+  white-space: normal;
+  line-height: 14px;
+  width: 100%;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.hydro-auth-card {
+  padding: 32px;
+  border-radius: 16px;
+  background: #110f0d;
+  border: 1px solid #ffedd91a;
+  box-shadow: 0 20px 25px #0006;
+}
+.hydro-auth-card .mantine-Card-root {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+.hydro-auth-card > .mantine-Card-root {
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+}
+@media (max-width: 767px) {
+  .hydro-workspace[data-background="true"] {
+    min-height: calc(100dvh - 136px);
+  }
+  .hydro-workspace[data-section="servers"] .hydro-source-server-row {
+    padding: 16px 20px;
+  }
+  .hydro-source-server-identity h3 {
+    max-width: none;
+  }
+  .hydro-server-tools {
+    position: static;
+    opacity: 1;
+  }
+  .hydro-workspace[data-section="servers"][data-view="list"] .hydro-source-server-row {
+    gap: 8px;
+  }
+}
+@media (max-width: 639px) {
+  .hydro-source-server-stats {
+    display: none;
+  }
+}
+
+/* Explicit primary color wins over Mantine's default filled-button foreground. */
+:root[data-hydrodactyl-theme="true"] .hydro-primary-button:not([data-disabled]) {
+  color: var(--hydro-primary-text, #1d1816) !important;
+}
+.hydro-workspace[data-section="files"] .hydro-file-manager .mantine-Table-table {
+  border-spacing: 0 2px;
+}
+:root[data-hydrodactyl-theme="true"] .hydro-variable-box .mantine-Input-input,
+:root[data-hydrodactyl-theme="true"] .hydro-workspace[data-section="startup"] .mantine-Textarea-input {
+  border-radius: 12px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+}
+
+/* File manager cell paint preserves native selected/upload/drop-target row colours. */
+:root[data-hydrodactyl-theme="true"] .hydro-workspace[data-section="files"] .hydro-file-manager .hydro-file-row > td {
+  background: inherit;
+  border-top: 1px solid var(--hydro-file-border);
+  border-bottom: 1px solid var(--hydro-file-border);
+}
+:root[data-hydrodactyl-theme="true"]
+  .hydro-workspace[data-section="files"]
+  .hydro-file-manager
+  .hydro-file-row
+  > td:first-child {
+  border-left: 1px solid var(--hydro-file-border);
+  border-radius: 4px 0 0 4px;
+}
+:root[data-hydrodactyl-theme="true"]
+  .hydro-workspace[data-section="files"]
+  .hydro-file-manager
+  .hydro-file-row
+  > td:last-child {
+  border-right: 1px solid var(--hydro-file-border);
+  border-radius: 0 4px 4px 0;
+}
+:root[data-hydrodactyl-theme="true"]
+  .hydro-workspace[data-section="files"]
+  .hydro-file-manager
+  .hydro-file-row:hover
+  > td {
+  border-color: var(--hydro-file-border-hover);
+}
+:root[data-hydrodactyl-theme="true"] .hydro-workspace[data-scope="admin"] .hydro-titled-grey-box .hydro-card {
+  background: var(--hydro-surface);
+  border-color: var(--mantine-color-default-border);
+}
+
+:root[data-hydrodactyl-theme="true"][data-mantine-color-scheme="light"]
+  .hydro-file-manager
+  .mantine-Table-table:has(.hydro-file-row) {
+  background: var(--hydro-surface);
+  border-color: var(--hydro-file-border);
+}
+
+/* Literal upstream colours: GlobalStylesheet, tailwind tokens and file style.module.css. */
+:root[data-hydrodactyl-theme="true"][data-mantine-color-scheme="dark"]
+  .hydro-file-manager
+  .hydro-file-row[data-selected="true"]
+  > td {
+  border-color: var(--hydro-file-selected-border);
+}
+:root[data-hydrodactyl-theme="true"][data-mantine-color-scheme="dark"] .hydro-workspace .hydro-titled-grey-box {
+  background: #ffffff08;
+  border-color: #ffffff07;
+}
+:root[data-hydrodactyl-theme="true"][data-mantine-color-scheme="dark"] .mantine-ThemeIcon-root {
+  color: var(--hydro-primary-text);
+}
+
+/* Paint translucent selected states once, on the row, as in upstream files/style.module.css. */
+:root[data-hydrodactyl-theme="true"] .hydro-workspace[data-section="files"] .hydro-file-manager .hydro-file-row > td {
+  background: transparent;
+}
+
+/* Source action grouping and a consistent parent-folder row on narrow screens. */
+.hydro-file-create-pair {
+  display: flex;
+  gap: 0;
+}
+.hydro-file-create-pair > .hydro-button:first-child {
+  border-radius: 12px 0 0 12px;
+}
+.hydro-file-create-pair > .hydro-button:last-child {
+  border-radius: 0 12px 12px 0;
+  margin-left: -1px;
+}
+.hydro-file-extras {
+  gap: 4px;
+}
+.hydro-file-name {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 639px) {
+  .hydro-file-manager > .mantine-Group-root > .mantine-Group-root {
+    width: 100%;
+    gap: 8px;
+  }
+  .hydro-file-toolbar {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .hydro-file-toolbar .hydro-button {
+    padding-inline: 12px;
+    font-size: 13px;
+  }
+  .hydro-file-extras {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .hydro-file-name {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    line-height: 18px;
+  }
+  .hydro-file-manager .hydro-file-row .gap-4 {
+    gap: 8px;
+  }
+  .hydro-file-parent-row {
+    height: 54px;
+  }
+}
+
+.hydro-file-view-controls {
+  flex-wrap: nowrap;
+  width: auto !important;
+}
+@media (max-width: 639px) {
+  .hydro-file-manager > .mantine-Group-root {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .hydro-file-manager > .mantine-Group-root > .hydro-file-view-controls {
+    width: auto !important;
+  }
+}
+@media (max-width: 639px) {
+  /* FileObjectRow hides size until sm; retain the same columns in the native table. */
+  .hydro-file-manager .mantine-Table-table tr > :nth-child(3) {
+    display: none;
+  }
+}
+
+/* Select-all is a control, not a breadcrumb item: no separator or clipped border. */
+.hydro-file-path-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding-left: 15px;
+}
+.hydro-file-path-row > .mantine-Breadcrumbs-root {
+  min-width: 0;
+  overflow-x: auto;
+}
+.hydro-file-path-row > .hydro-file-select-all {
+  flex: none;
+  margin: 0;
+}
+.hydro-file-manager .hydro-file-selection-cell {
+  width: 40px;
+  min-width: 40px;
+  padding: 8px !important;
+  vertical-align: middle;
+}
+.hydro-file-selection-cell .mantine-Checkbox-root {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+.hydro-file-selection-cell .mantine-Checkbox-inner,
+.hydro-file-select-all .mantine-Checkbox-inner {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+.hydro-file-selection-cell .mantine-Checkbox-input,
+.hydro-file-select-all .mantine-Checkbox-input {
+  width: 20px;
+  height: 20px;
+}
+.hydro-resource-select-all {
+  margin: 12px 0;
+}
+:root[data-hydrodactyl-theme="true"] .mantine-Checkbox-input[data-indeterminate] {
+  background: #fe7e85;
+  border-color: #fe7e85;
+}

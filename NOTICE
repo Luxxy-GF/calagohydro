@@ -1,0 +1,28 @@
+Hydrodactyl Theme for Calagopus
+
+The color palette and visual treatment are adapted from
+https://github.com/BlueprintFramework/hydrodactyl
+Source revision: e3c445fd4ecffe57e786894f8b9dfc6340526176
+
+Hydrodactyl: Copyright 2026–present Naterfute, Blueprint Framework, and contributors.
+Pyrodactyl: Copyright 2023–2025 Pyro Inc. and contributors.
+Pyrodactyl: Copyright 2025–2026 Pyrodactyl-oss and contributors.
+Pterodactyl: Copyright 2015–2022 Dane Everitt and contributors.
+
+Adaptation: Mantine palette and component styles, responsive Calagopus sidebar,
+MainPageHeader and PageContentBlock proportions, dashboard ServerRow treatment,
+console terminal/graph layout, resource rows and page layouts, authentication,
+shared controls, charts, and device appearance preferences.
+See SOURCE-AUDIT.md and SOURCE-AUDIT.json for the per-file source mapping.
+This extension is not an official Hydrodactyl
+or Blueprint Framework product. Calagopus's branding remains configurable.
+
+See LICENSE-HYDRODACTYL.md (Apache-2.0) and LICENSE_PTERO.md (MIT).
+
+Bundled Plus Jakarta Sans variable Latin font from
+@fontsource-variable/plus-jakarta-sans 5.3.0.
+Copyright 2020 The Plus Jakarta Sans Project Authors.
+Licensed under the SIL Open Font License 1.1; see LICENSE-FONT.txt.
+
+Calagopus controller adaptations: Copyright (c) Calagopus, 0x7d8.
+Licensed under MIT; see LICENSE-CALAGOPUS.txt.

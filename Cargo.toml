@@ -1,0 +1,11 @@
+[package]
+name = "com_luxxy_hydrodactyl"
+description = "Hydrodactyl appearance for every Calagopus page."
+authors = ["Luxxy-GF"]
+version = "2.1.11"
+edition = { workspace = true }
+license = "Apache-2.0 AND MIT"
+
+[dependencies]
+shared = { workspace = true }
+async-trait = { workspace = true }

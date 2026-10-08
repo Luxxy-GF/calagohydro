@@ -1,0 +1,646 @@
+import { faCode, faFolderOpen, faSearch } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
+import { join } from 'pathe';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import { createSearchParams, useNavigate, useSearchParams } from 'react-router';
+import { FileOpenMode } from 'shared/src/registries/pages/server/files';
+import { httpErrorToHuman } from '@/api/axios.ts';
+import copyFile from '@/api/server/files/copyFile.ts';
+import ActionIcon from '@/elements/buttons/ActionIcon.tsx';
+import ServerContentContainer from '@/elements/containers/ServerContentContainer.tsx';
+import { useNavbarPageHeader } from '@/elements/containers/useNavbarPageHeader.ts';
+import Card from '@/elements/data-display/Card.tsx';
+import Table, { TableData, TableHeaderProps, TableRow } from '@/elements/data-display/Table.tsx';
+import SelectionArea from '@/elements/dnd/SelectionArea.tsx';
+import Spinner from '@/elements/feedback/Spinner.tsx';
+import Group from '@/elements/layout/Group.tsx';
+import SegmentedControl from '@/elements/layout/SegmentedControl.tsx';
+import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
+import Tooltip from '@/elements/overlays/Tooltip.tsx';
+import { isOpenableFile } from '@/lib/files/files.ts';
+import { CORE_QUICK_ACTION_CATEGORIES } from '@/lib/quickActions/coreQuickActions.tsx';
+import { useFileBrowserQuickActions } from '@/pages/server/files/hooks/useFileBrowserQuickActions.tsx';
+import useFileUploadSocket from '@/pages/server/files/hooks/useFileUploadSocket.ts';
+import IncompleteUploadsBanner from '@/pages/server/files/IncompleteUploadsBanner.tsx';
+import FileActionBar from '@/pages/server/files/list/FileActionBar.tsx';
+import FileDiskUsageBar from '@/pages/server/files/list/FileDiskUsageBar.tsx';
+import FileInfiniteScrollSentinel from '@/pages/server/files/list/FileInfiniteScrollSentinel.tsx';
+import FileMassContextMenu from '@/pages/server/files/list/FileMassContextMenu.tsx';
+import FileModals from '@/pages/server/files/list/FileModals.tsx';
+import FileOperationsProgress from '@/pages/server/files/list/FileOperationsProgress.tsx';
+import FileSearchBanner from '@/pages/server/files/list/FileSearchBanner.tsx';
+import FileSearchPreview, {
+  canPreviewFile,
+  estimateFileSearchPreviewHeight,
+} from '@/pages/server/files/list/FileSearchPreview.tsx';
+import FileSettings from '@/pages/server/files/list/FileSettings.tsx';
+import FileUpload from '@/pages/server/files/list/FileUpload.tsx';
+import ServerFilesColumnRightSection, {
+  columnOnClick,
+  type ServerFilesColumn,
+} from '@/pages/server/files/list/ServerFilesColumnRightSection.tsx';
+import type { FileTreeWorkspaceHandle } from '@/pages/server/files/tree/FileTreeWorkspace.tsx';
+import {
+  isInputFocused,
+  matchesActiveShortcut,
+  useKeyboardShortcuts,
+} from '@/plugins/quick-actions/useKeyboardShortcuts.ts';
+import { useQuickActions } from '@/plugins/quick-actions/useQuickActions.ts';
+import { useSelectionArea } from '@/plugins/selection/useSelectionArea.ts';
+import { useServerCan } from '@/plugins/usePermissions.ts';
+import { usePageBreakpoint } from '@/plugins/viewport/usePageBreakpoint.ts';
+import { FileManagerProvider } from '@/providers/FileManagerProvider.tsx';
+import { useToast } from '@/providers/ToastProvider.tsx';
+import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import { useFileManagerApi, useFileManagerStore } from '@/stores/fileManager.ts';
+import { useServerStore } from '@/stores/server.ts';
+import { fileManagerUndoScope, runLastUndoEntry } from '@/stores/undoHistory.ts';
+import FileBreadcrumbs from './FileBreadcrumbs.tsx';
+import FileParentDirectoryRow from './FileParentDirectoryRow.tsx';
+import FileToolbar from './FileToolbar.tsx';
+import SelectableFileRow from './SelectableFileRow.tsx';
+
+const ESTIMATED_ROW_HEIGHT = 54;
+const VIRTUALIZER_OVERSCAN = 15;
+
+function FileBrowser() {
+  const { t } = useTranslations();
+  const server = useServerStore((state) => state.server);
+  const { addToast } = useToast();
+  const [_, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const typeAheadBuffer = useRef('');
+  const typeAheadTimeout = useRef<ReturnType<typeof setTimeout>>(null);
+
+  const store = useFileManagerApi();
+  const isLoading = useFileManagerStore((state) => state.isLoading);
+  const browsingEntries = useFileManagerStore((state) => state.browsingEntries);
+  const browsingError = useFileManagerStore((state) => state.browsingError);
+  const anyActing = useFileManagerStore((state) => state.actingFiles.size > 0);
+  const browsingDirectory = useFileManagerStore((state) => state.browsingDirectory);
+  const browsingBackup = useFileManagerStore((state) => state.browsingBackup);
+  const searchInfo = useFileManagerStore((state) => state.searchInfo);
+  const collapsedSearchPreviews = useFileManagerStore((state) => state.collapsedSearchPreviews);
+  const sortMode = useFileManagerStore((state) => state.sortMode);
+  const clickOnce = useFileManagerStore((state) => state.clickOnce);
+  const preferPhysicalSize = useFileManagerStore((state) => state.preferPhysicalSize);
+  const { doSelectFiles, doOpenModal, setSortMode, resetEntries } = store.getState();
+
+  const canCreate = useServerCan('files.create');
+  const canUpdate = useServerCan('files.update');
+
+  const { onSelectedStart, onSelected } = useSelectionArea({
+    identify: (file) => file.name,
+    getSelected: () => store.getState().selectedFiles.values(),
+    setSelected: doSelectFiles,
+  });
+
+  const handleOpen = useCallback(
+    (openMode: FileOpenMode) => {
+      if (!openMode.openable) return;
+
+      if (typeAheadTimeout.current) clearTimeout(typeAheadTimeout.current);
+      typeAheadBuffer.current = '';
+
+      const fileManagerContext = store.getState();
+
+      openMode.handleOpen({
+        server,
+        fileManagerContext,
+        navigate,
+        setSearchParams,
+
+        handleDirectoryOpen: (path) => {
+          setSearchParams({
+            directory: join(fileManagerContext.browsingDirectory, path),
+          });
+        },
+        handleFileOpen: (file, action, params) => {
+          const searchParams = createSearchParams({
+            directory: fileManagerContext.browsingDirectory,
+            file,
+            ...params,
+          });
+
+          navigate(`/server/${server.uuidShort}/files/${action}?${searchParams}`);
+        },
+      });
+    },
+    [server, navigate, setSearchParams, store],
+  );
+
+  const openFile = useCallback(
+    (openMode: FileOpenMode) => {
+      if (!openMode.openable && openMode.reason === 'tooLarge') {
+        addToast(t('pages.server.files.toast.fileTooLargeToOpen', {}), 'warning');
+        return;
+      }
+      handleOpen(openMode);
+    },
+    [handleOpen, addToast, t],
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const state = store.getState();
+
+      if (e.ctrlKey || e.metaKey || e.altKey || state.openModal !== null) return;
+      if (document.activeElement instanceof HTMLInputElement && e.key === ' ') return;
+      if (isInputFocused()) return;
+
+      if (e.key.length !== 1) return;
+      if (matchesActiveShortcut(e)) return;
+
+      e.preventDefault();
+
+      if (typeAheadTimeout.current) clearTimeout(typeAheadTimeout.current);
+      typeAheadBuffer.current += e.key.toLowerCase();
+
+      const match = state.browsingEntries.data.find((entry) =>
+        entry.name.toLowerCase().startsWith(typeAheadBuffer.current),
+      );
+
+      if (match) {
+        state.doSelectFiles([match]);
+      }
+
+      typeAheadTimeout.current = setTimeout(() => {
+        typeAheadBuffer.current = '';
+      }, 1000);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (typeAheadTimeout.current) clearTimeout(typeAheadTimeout.current);
+    };
+  }, [store]);
+
+  const moveSelection = (direction: -1 | 1) => {
+    const state = store.getState();
+    if (state.selectedFiles.size === 0) return;
+
+    const entries = state.browsingEntries.data;
+    const indexByName = new Map(entries.map((entry, index) => [entry.name, index]));
+
+    const selectedIndices = state.selectedFiles
+      .keys()
+      .map((file) => indexByName.get(file) ?? -1)
+      .filter((index) => index !== -1);
+
+    if (selectedIndices.length === 0) return;
+
+    const nextFiles = selectedIndices.map((index) => entries[(index + direction + entries.length) % entries.length]);
+
+    state.doSelectFiles(nextFiles);
+  };
+
+  useKeyboardShortcuts({
+    shortcuts: [
+      {
+        id: 'files.selectAll',
+        callback: () => doSelectFiles(store.getState().browsingEntries.data),
+      },
+      {
+        id: 'files.search',
+        callback: () => doOpenModal('search'),
+      },
+      {
+        id: 'files.moveUpSelection',
+        callback: () => moveSelection(-1),
+      },
+      {
+        id: 'files.moveDownSelection',
+        callback: () => moveSelection(1),
+      },
+      {
+        id: 'files.moveUpDirectory',
+        callback: () => {
+          if (store.getState().searchInfo) return;
+
+          setSearchParams({
+            directory: join(store.getState().browsingDirectory, '..'),
+          });
+        },
+      },
+      {
+        id: 'files.duplicate',
+        callback: () => {
+          const state = store.getState();
+          if (canCreate && state.selectedFiles.size === 1 && state.browsingWritableDirectory) {
+            const file = state.selectedFiles.values()[0];
+
+            copyFile(server.uuid, join(state.browsingDirectory, file.name), null)
+              .then(() => {
+                addToast(t('pages.server.files.toast.fileCopyingStarted', {}), 'success');
+              })
+              .catch((msg) => {
+                addToast(httpErrorToHuman(msg), 'error');
+              });
+          }
+        },
+      },
+      {
+        id: 'files.rename',
+        callback: () => {
+          const state = store.getState();
+          if (canUpdate && state.selectedFiles.size === 1 && state.browsingWritableDirectory) {
+            doOpenModal('rename', [state.selectedFiles.values()[0]]);
+          }
+        },
+      },
+      {
+        id: 'general.undo',
+        callback: () => void runLastUndoEntry(fileManagerUndoScope(server.uuid)),
+      },
+      {
+        key: 'Enter',
+        callback: () => {
+          const state = store.getState();
+          if (state.selectedFiles.size === 1 && state.openModal === null) {
+            openFile(isOpenableFile(state.selectedFiles.values()[0], state));
+          }
+        },
+      },
+    ],
+    deps: [openFile, canCreate, canUpdate],
+  });
+
+  const wide = usePageBreakpoint('md');
+
+  const columns = useMemo(() => {
+    const sizeColumn: ServerFilesColumn = preferPhysicalSize ? 'physical_size' : 'size';
+    const columns: TableHeaderProps[] = [
+      { name: '' },
+      {
+        name: t('common.table.columns.name', {}),
+        rightSection: <ServerFilesColumnRightSection name='name' />,
+        onClick: columnOnClick('name', sortMode, setSortMode),
+      },
+      {
+        name: t('common.table.columns.size', {}),
+        rightSection: <ServerFilesColumnRightSection name={sizeColumn} />,
+        onClick: columnOnClick(sizeColumn, sortMode, setSortMode),
+      },
+    ];
+
+    if (wide) {
+      columns.push({
+        name: t('pages.server.files.table.columns.modified', {}),
+        rightSection: <ServerFilesColumnRightSection name='modified' />,
+      });
+    }
+
+    columns.push({ name: '' });
+
+    return columns;
+  }, [t, sortMode, preferPhysicalSize, wide]);
+
+  const normalizedBrowsingDirectory = join('/', browsingDirectory);
+  const backupRootDirectory = browsingBackup ? `/.backups/${browsingBackup.uuid}` : null;
+  const showParentDirectoryRow =
+    normalizedBrowsingDirectory !== '/' && normalizedBrowsingDirectory !== backupRootDirectory && !searchInfo;
+
+  const tableAnchorRef = useRef<HTMLDivElement>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
+
+  useLayoutEffect(() => {
+    const updateScrollMargin = () => {
+      if (tableAnchorRef.current) {
+        setScrollMargin(tableAnchorRef.current.getBoundingClientRect().top + window.scrollY);
+      }
+    };
+
+    updateScrollMargin();
+
+    window.addEventListener('resize', updateScrollMargin);
+    const resizeObserver = new ResizeObserver(updateScrollMargin);
+    resizeObserver.observe(document.body);
+
+    return () => {
+      window.removeEventListener('resize', updateScrollMargin);
+      resizeObserver.disconnect();
+    };
+  }, [browsingDirectory, searchInfo, browsingError, showParentDirectoryRow]);
+
+  const rows = useMemo(() => {
+    const result: { entry: (typeof browsingEntries.data)[number]; path: string; key: string; preview: boolean }[] = [];
+    for (const entry of browsingEntries.data) {
+      const path = join('/', searchInfo?.root ?? browsingDirectory, entry.name);
+      result.push({ entry, path, key: `file:${path}`, preview: false });
+      if (searchInfo && canPreviewFile(entry) && !collapsedSearchPreviews.has(path)) {
+        result.push({ entry, path, key: `preview:${path}`, preview: true });
+      }
+    }
+    return result;
+  }, [browsingEntries.data, browsingDirectory, searchInfo, collapsedSearchPreviews]);
+
+  const rowVirtualizer = useWindowVirtualizer<HTMLTableRowElement>({
+    count: rows.length,
+    estimateSize: (index) => {
+      const row = rows[index];
+      return row?.preview
+        ? estimateFileSearchPreviewHeight(searchInfo?.contentMatches?.[row.path]) + 16
+        : ESTIMATED_ROW_HEIGHT;
+    },
+    overscan: VIRTUALIZER_OVERSCAN,
+    scrollMargin,
+    getItemKey: (index) => rows[index]?.key ?? index,
+  });
+
+  const virtualRows = useSyncExternalStore(
+    () => () => undefined,
+    () => rowVirtualizer.getVirtualItems(),
+  );
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start - scrollMargin : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? rowVirtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1].end - scrollMargin)
+      : 0;
+
+  return (
+    <div className='h-fit relative'>
+      <FileDiskUsageBar />
+
+      <Card mb='sm' className='hydro-file-breadcrumbs'>
+        <FileBreadcrumbs path={browsingDirectory} />
+      </Card>
+
+      <FileSearchBanner resetEntries={resetEntries} />
+
+      <FileMassContextMenu>
+        {({ openMassMenu }) => (
+          <SelectionArea
+            onSelectedStart={onSelectedStart}
+            onSelected={onSelected}
+            deferSelection
+            fireEvents={false}
+            className='h-full'
+            disabled={anyActing}
+          >
+            <div ref={tableAnchorRef}>
+              <Table
+                columns={columns}
+                loading={isLoading}
+                pagination={browsingEntries}
+                error={browsingError}
+                allowSelect={false}
+              >
+                {showParentDirectoryRow && <FileParentDirectoryRow />}
+
+                {paddingTop > 0 && (
+                  <TableRow>
+                    <TableData colSpan={columns.length} style={{ height: paddingTop, padding: 0, border: 'none' }} />
+                  </TableRow>
+                )}
+
+                {virtualRows.map((virtualRow) => {
+                  const row = rows[virtualRow.index];
+                  if (!row) return null;
+                  const entry = row.entry;
+                  if (row.preview) {
+                    return (
+                      <TableRow key={virtualRow.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index}>
+                        <TableData colSpan={columns.length} className='max-w-0 px-4 py-2'>
+                          <FileSearchPreview
+                            file={entry}
+                            path={row.path}
+                            matches={searchInfo?.contentMatches?.[row.path]}
+                          />
+                        </TableData>
+                      </TableRow>
+                    );
+                  }
+
+                  return (
+                    <SelectableFileRow
+                      key={virtualRow.key}
+                      measureElement={rowVirtualizer.measureElement}
+                      dataIndex={virtualRow.index}
+                      file={entry}
+                      handleOpen={openFile}
+                      openMassMenu={openMassMenu}
+                      clickOnce={clickOnce}
+                      preferPhysicalSize={preferPhysicalSize}
+                    />
+                  );
+                })}
+
+                {paddingBottom > 0 && (
+                  <TableRow>
+                    <TableData colSpan={columns.length} style={{ height: paddingBottom, padding: 0, border: 'none' }} />
+                  </TableRow>
+                )}
+
+                {!searchInfo && <FileInfiniteScrollSentinel colSpan={columns.length} />}
+              </Table>
+            </div>
+          </SelectionArea>
+        )}
+      </FileMassContextMenu>
+    </div>
+  );
+}
+
+type FileManagerView = 'list' | 'tree';
+const FileTreeWorkspace = lazy(() => import('@/pages/server/files/tree/FileTreeWorkspace.tsx'));
+const FILE_MANAGER_VIEW_STORAGE_KEY = 'file_manager_view';
+const fileTreeVisibilityStorageKey = (serverUuid: string) => `file_manager_tree_visible:${serverUuid}`;
+
+const getStoredFileManagerView = (): FileManagerView => {
+  const stored = localStorage.getItem(FILE_MANAGER_VIEW_STORAGE_KEY);
+  return stored === 'tree' || stored === 'editor' ? 'tree' : 'list';
+};
+
+const getStoredFileTreeVisibility = (serverUuid: string) =>
+  localStorage.getItem(fileTreeVisibilityStorageKey(serverUuid)) !== 'false';
+
+function ServerFilesComponent() {
+  const { t } = useTranslations();
+  const serverUuid = useServerStore((state) => state.server.uuid);
+  const doOpenModal = useFileManagerStore((state) => state.doOpenModal);
+  const browsingDirectory = useFileManagerStore((state) => state.browsingDirectory);
+  const resetEntries = useFileManagerStore((state) => state.resetEntries);
+  const setSearchInfo = useFileManagerStore((state) => state.setSearchInfo);
+  const [, setSearchParams] = useSearchParams();
+  const [view, setView] = useState<FileManagerView>(getStoredFileManagerView);
+  const viewTitle = t(view === 'tree' ? 'pages.server.files.view.tree' : 'pages.server.files.view.list', {});
+  useNavbarPageHeader({ title: viewTitle });
+  const _desktop = usePageBreakpoint('lg');
+  const [fileTreeVisible, setFileTreeVisible] = useState(() => getStoredFileTreeVisibility(serverUuid));
+  const [treeInitialDirectory, setTreeInitialDirectory] = useState(browsingDirectory);
+  const [treeDirty, setTreeDirty] = useState(false);
+  const [pendingView, setPendingView] = useState<FileManagerView | null>(null);
+  const treeWorkspaceRef = useRef<FileTreeWorkspaceHandle>(null);
+  const createTreeFile = view === 'tree' ? () => treeWorkspaceRef.current?.createFile() : undefined;
+
+  useFileBrowserQuickActions({ treeView: view === 'tree', onCreateFile: createTreeFile });
+  useFileUploadSocket();
+
+  useEffect(() => setFileTreeVisible(getStoredFileTreeVisibility(serverUuid)), [serverUuid]);
+
+  const applyView = (value: FileManagerView) => {
+    setSearchInfo(null);
+    resetEntries();
+
+    if (value === 'tree') setTreeInitialDirectory(browsingDirectory);
+    else setSearchParams({ directory: browsingDirectory });
+    localStorage.setItem(FILE_MANAGER_VIEW_STORAGE_KEY, value);
+    setView(value);
+  };
+
+  const changeView = (value: string) => {
+    if ((value !== 'list' && value !== 'tree') || value === view) return;
+    if (view === 'tree' && treeDirty) setPendingView(value);
+    else applyView(value);
+  };
+
+  const toggleFileTree = () => {
+    setFileTreeVisible((visible) => {
+      localStorage.setItem(fileTreeVisibilityStorageKey(serverUuid), String(!visible));
+      return !visible;
+    });
+  };
+
+  useQuickActions([
+    {
+      id: 'files.view.list',
+      category: CORE_QUICK_ACTION_CATEGORIES.page,
+      label: () => t('pages.server.files.quickAction.switchToList', {}),
+      icon: <FontAwesomeIcon icon={faFolderOpen} />,
+      isVisible: () => view !== 'list',
+      perform: () => changeView('list'),
+    },
+    {
+      id: 'files.view.tree',
+      category: CORE_QUICK_ACTION_CATEGORIES.page,
+      label: () => t('pages.server.files.quickAction.switchToTree', {}),
+      icon: <FontAwesomeIcon icon={faCode} />,
+      isVisible: () => view !== 'tree',
+      perform: () => changeView('tree'),
+    },
+  ]);
+
+  return (
+    <div data-file-manager-page className='hydro-file-manager flex w-full min-w-0 flex-col'>
+      <FileModals treeView={view === 'tree'} />
+      <ConfirmationModal
+        title={t('pages.server.files.modal.unsavedChanges.title', {})}
+        opened={pendingView !== null}
+        onClose={() => setPendingView(null)}
+        onConfirmed={() => {
+          if (pendingView) applyView(pendingView);
+          setPendingView(null);
+        }}
+        confirm={t('common.button.leavePage', {})}
+      >
+        {t('pages.server.files.modal.unsavedChanges.content', {}).md()}
+      </ConfirmationModal>
+      <FileUpload showOverlay={view === 'list'} />
+      <FileActionBar />
+
+      <Group justify='space-between' align='center' mb='md'>
+        <Group className='hydro-file-view-controls'>
+          <FileSettings />
+          {view === 'tree' && (
+            <Tooltip label={t('pages.server.files.tooltip.advancedSearch', {})}>
+              <ActionIcon
+                type='button'
+                variant='subtle'
+                color='gray'
+                aria-label={t('pages.server.files.tooltip.advancedSearch', {})}
+                onClick={() => doOpenModal('search')}
+              >
+                <FontAwesomeIcon icon={faSearch} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+
+          <SegmentedControl
+            value={view}
+            onChange={changeView}
+            styles={{ label: { padding: 0 } }}
+            data={[
+              {
+                value: 'list',
+                label: (
+                  <Tooltip label={t('pages.server.files.view.list', {})}>
+                    <span className='block' style={{ padding: 'var(--sc-padding)' }}>
+                      <FontAwesomeIcon icon={faFolderOpen} aria-label={t('pages.server.files.view.list', {})} />
+                    </span>
+                  </Tooltip>
+                ),
+              },
+              {
+                value: 'tree',
+                label: (
+                  <Tooltip label={t('pages.server.files.view.tree', {})}>
+                    <span className='block' style={{ padding: 'var(--sc-padding)' }}>
+                      <FontAwesomeIcon icon={faCode} aria-label={t('pages.server.files.view.tree', {})} />
+                    </span>
+                  </Tooltip>
+                ),
+              },
+            ]}
+          />
+
+          <FileOperationsProgress />
+        </Group>
+        <FileToolbar onCreateFile={createTreeFile} />
+      </Group>
+
+      <IncompleteUploadsBanner />
+
+      {view === 'list' ? (
+        <FileBrowser />
+      ) : (
+        <>
+          <FileSearchBanner resetEntries={resetEntries} />
+          <Suspense
+            fallback={
+              <div className='flex justify-center py-16'>
+                <Spinner size={48} />
+              </div>
+            }
+          >
+            <FileTreeWorkspace
+              ref={treeWorkspaceRef}
+              onDirtyStateChange={setTreeDirty}
+              key={serverUuid}
+              initialDirectory={treeInitialDirectory}
+              fileTreeVisible={fileTreeVisible}
+              onToggleFileTree={toggleFileTree}
+            />
+          </Suspense>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function ServerFiles() {
+  const { t } = useTranslations();
+
+  return (
+    <ServerContentContainer
+      title={t('pages.server.files.title', {})}
+      hideTitleComponent
+      registry={window.extensionContext.extensionRegistry.pages.server.files.container}
+    >
+      <FileManagerProvider>
+        <ServerFilesComponent />
+      </FileManagerProvider>
+    </ServerContentContainer>
+  );
+}
