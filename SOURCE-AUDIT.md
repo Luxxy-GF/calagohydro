@@ -15,7 +15,7 @@ The extension replaces the modern shell, console, dashboard rows, main server re
 - superseded layout: 5
 - native runtime retained: 64
 
-Reproduce: `python3 tools/audit-source.py /path/to/hydrodactyl-reference`. JSON includes per-file SHA-256, imports, size, destinations and reasons.
+Reproduce: `CALAGOPUS_ROOT=/path/to/panel python3 scripts/audit-source.py /path/to/hydrodactyl-reference`. JSON includes per-file SHA-256, imports, size, destinations and reasons.
 
 ## Files
 

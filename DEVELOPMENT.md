@@ -1,4 +1,4 @@
-# Hydrodactyl Theme 2.1.11
+# Hydrodactyl Theme 1.0.0
 
 Installable Calagopus >=1.2.4 extension, package `com.luxxy.hydrodactyl`. This release ports the modern Hydrodactyl shell and resource-page presentation using the reference repository at `e3c445fd4ecffe57e786894f8b9dfc6340526176`.
 
@@ -17,48 +17,38 @@ The theme uses Calagopus APIs, websocket protocol, authentication and permission
 
 ## Develop
 
-Source: `backend-extensions/com_luxxy_hydrodactyl/frontend`. In this checkout, `frontend/extensions/com_luxxy_hydrodactyl` is a symlink so Vite discovers the extension. `src/overrides.ts` uses Calagopus's supported build override for dashboard rows and falls back to the original row when disabled.
+The repository separates `backend/` (Rust companion) and `frontend/` (theme code), with `Metadata.toml` at the root. Build the extension archive with `python3 scripts/package.py`, then import it into a development Calagopus panel checkout through its extension manager. Calagopus installs each part into its normal backend/frontend extension directories.
 
-```sh
-cd frontend
-pnpm install
-pnpm typecheck
-pnpm build
-pnpm dev
-```
-
-Run the backend on port 8000 for API proxying. Register the Rust companion using `extensions resync` and rebuild through Calagopus's normal workflow.
+Use the panel's pinned dependencies and build commands for TypeScript and Rust validation. This repository is not a standalone panel or standalone Cargo workspace.
 
 ## Validation
 
-TypeScript and the production frontend build pass. `tools/visual-check.cjs` renders the actual production bundle against intercepted synthetic API/socket fixtures: 16 desktop routes, five mobile layouts, desktop/mobile login, database/schedule dialogs, mobile navigation, read-only permission checks and the disabled-theme dashboard fallback. It checks runtime errors and horizontal overflow. It does not create data or validate live Wings/backend operations.
+TypeScript and the production frontend build pass. `scripts/visual-check.cjs` renders the actual production bundle against intercepted synthetic API/socket fixtures: 16 desktop routes, five mobile layouts, desktop/mobile login, database/schedule dialogs, mobile navigation, read-only permission checks and the disabled-theme dashboard fallback. It checks runtime errors and horizontal overflow. It does not create data or validate live Wings/backend operations.
 
-To regenerate fixtures from the current Calagopus schemas:
-
-```sh
-cd frontend
-NODE_OPTIONS=--require="$PWD/../backend-extensions/com_luxxy_hydrodactyl/tools/fixture-env.cjs" \
-  pnpm exec tsx --tsconfig tsconfig.json ../backend-extensions/com_luxxy_hydrodactyl/tools/visual-fixtures.ts /tmp/hydrodactyl-fixtures.json
-pnpm exec vite preview --host 127.0.0.1 --port 4173
-```
-
-In another terminal, from the panel root, with Playwright and Chromium available:
+To regenerate schema-valid demo fixtures and screenshots, set `CALAGOPUS_ROOT` to your development panel checkout. Its frontend dependencies must be installed and its production frontend built with this extension enabled.
 
 ```sh
-node backend-extensions/com_luxxy_hydrodactyl/tools/visual-check.cjs /tmp/hydrodactyl-fixtures.json /tmp/theme-previews
+export CALAGOPUS_ROOT=/path/to/panel
+NODE_OPTIONS="--require=$PWD/scripts/fixture-env.cjs" \
+  "$CALAGOPUS_ROOT/frontend/node_modules/.bin/tsx" \
+  --tsconfig "$CALAGOPUS_ROOT/frontend/tsconfig.json" \
+  scripts/visual-fixtures.ts /tmp/calagohydro-fixtures.json
 ```
 
-Set `PLAYWRIGHT_MODULE` / `CHROMIUM_PATH` if the tools are installed elsewhere. The script serves built assets locally to avoid Vite's backend assets proxy. Reproduce the reference audit with `python3 tools/audit-source.py /path/to/hydrodactyl-reference` from the extension directory.
+Start Vite preview from the panel frontend directory. In another terminal, from this repository:
+
+```sh
+THEME_PREVIEW_URL=http://127.0.0.1:4173 \
+  node scripts/screenshots.cjs /tmp/calagohydro-fixtures.json photos
+```
+
+Playwright and Chromium are required; set `PLAYWRIGHT_MODULE` and `CHROMIUM_PATH` if they are installed outside the normal dependency paths. The screenshot runner captures populated page content, waits for fonts, and uses intercepted local demo APIs rather than live panel data. `scripts/visual-check.cjs` provides broader interaction checks against the same fixtures.
+
+Reproduce the reference audit with `CALAGOPUS_ROOT=/path/to/panel python3 scripts/audit-source.py /path/to/hydrodactyl-reference`.
 
 ## Export and install
 
-From the panel root with the normal panel environment variables configured:
-
-```sh
-cargo run -p panel-rs -- extensions export com.luxxy.hydrodactyl
-```
-
-Install `exported-extensions/com_luxxy_hydrodactyl.c7s.zip` through Calagopus extension management. Rebuild and restart as prompted. Appearance controls are at `/admin/extensions/com.luxxy.hydrodactyl`. Disable/remove through the normal extension controls and reload. The extension registers no backend routes, migrations or background tasks.
+From this repository, run `python3 scripts/package.py`. Import `dist/calagohydro-1.0.0.c7s.zip` through Calagopus extension management. Rebuild and restart as prompted. Appearance controls are at `/admin/extensions/com.luxxy.hydrodactyl`. Disable/remove through the normal extension controls and reload. The extension registers no backend routes, migrations or background tasks.
 
 ## Attribution
 

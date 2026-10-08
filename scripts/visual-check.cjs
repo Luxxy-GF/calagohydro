@@ -4,7 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const { decode } = require(path.resolve(__dirname, '../../../frontend/node_modules/@msgpack/msgpack'));
+const { decode } = require(path.resolve(process.env.CALAGOPUS_ROOT || path.resolve(__dirname, '../../..'), 'frontend/node_modules/@msgpack/msgpack'));
 const base = process.env.THEME_PREVIEW_URL || 'http://127.0.0.1:4173';
 const fixture = JSON.parse(fs.readFileSync(process.argv[2] || '/tmp/hydrodactyl-fixtures.json'));
 const output = process.argv[3] || '/tmp/hydrodactyl-previews';
@@ -17,7 +17,7 @@ async function mock(context, authenticated=true, enabled=true, readOnly=false, e
  // Vite's /assets proxy normally points at Rust; serve the production build locally.
  await context.route('**/assets/**', async route => {
   const name = decodeURIComponent(new URL(route.request().url()).pathname).slice('/assets/'.length);
-  const assets = path.resolve(__dirname, '../../../frontend/dist/assets');
+  const assets = path.resolve(process.env.CALAGOPUS_ROOT || path.resolve(__dirname, '../../..'), 'frontend/dist/assets');
   const file = path.resolve(assets, name);
   if (!file.startsWith(assets + path.sep) || !fs.existsSync(file)) return route.fulfill({status:404});
   const ext = path.extname(file);

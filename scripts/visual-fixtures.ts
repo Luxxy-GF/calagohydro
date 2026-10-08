@@ -1,18 +1,23 @@
 /* Synthetic local fixtures; never creates users, servers, or data on a real panel. */
 import { writeFileSync } from 'node:fs';
-import { publicSettingsSchema as Settings } from '../../../frontend/src/lib/schemas/settings.ts';
-import { fullUserSchema as User, userSchema as SummaryUser } from '../../../frontend/src/lib/schemas/user.ts';
-import { serverSchema as Server } from '../../../frontend/src/lib/schemas/server/server.ts';
-import { serverAllocationSchema as Allocation } from '../../../frontend/src/lib/schemas/server/allocations.ts';
-import { serverDatabaseSchema as Database } from '../../../frontend/src/lib/schemas/server/databases.ts';
-import { serverDirectoryEntrySchema as File } from '../../../frontend/src/lib/schemas/server/files.ts';
-import { serverBackupSchema as Backup } from '../../../frontend/src/lib/schemas/server/backups.ts';
-import { serverScheduleSchema as Schedule } from '../../../frontend/src/lib/schemas/server/schedules.ts';
-import { serverSubuserSchema as Subuser } from '../../../frontend/src/lib/schemas/server/subusers.ts';
-import { serverVariableSchema as Variable } from '../../../frontend/src/lib/schemas/server/startup.ts';
-import { userApiKeySchema as ApiKey } from '../../../frontend/src/lib/schemas/user/apiKeys.ts';
-import { userSshKeySchema as SshKey } from '../../../frontend/src/lib/schemas/user/sshKeys.ts';
-import { serializeForApi } from '../../../frontend/src/lib/serialization/api-transform.ts';
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
+if (!process.env.CALAGOPUS_ROOT) throw new Error('Set CALAGOPUS_ROOT to your panel checkout');
+const panelRoot = process.env.CALAGOPUS_ROOT;
+const loadSchema = createRequire(resolve(panelRoot, 'frontend/package.json'));
+const { publicSettingsSchema: Settings } = loadSchema(resolve(panelRoot, 'frontend/src/lib/schemas/settings.ts'));
+const { fullUserSchema: User, userSchema: SummaryUser } = loadSchema(resolve(panelRoot, 'frontend/src/lib/schemas/user.ts'));
+const { serverSchema: Server } = loadSchema(resolve(panelRoot, 'frontend/src/lib/schemas/server/server.ts'));
+const { serverAllocationSchema: Allocation } = loadSchema(resolve(panelRoot, 'frontend/src/lib/schemas/server/allocations.ts'));
+const { serverDatabaseSchema: Database } = loadSchema(resolve(panelRoot, 'frontend/src/lib/schemas/server/databases.ts'));
+const { serverDirectoryEntrySchema: File } = loadSchema(resolve(panelRoot, 'frontend/src/lib/schemas/server/files.ts'));
+const { serverBackupSchema: Backup } = loadSchema(resolve(panelRoot, 'frontend/src/lib/schemas/server/backups.ts'));
+const { serverScheduleSchema: Schedule } = loadSchema(resolve(panelRoot, 'frontend/src/lib/schemas/server/schedules.ts'));
+const { serverSubuserSchema: Subuser } = loadSchema(resolve(panelRoot, 'frontend/src/lib/schemas/server/subusers.ts'));
+const { serverVariableSchema: Variable } = loadSchema(resolve(panelRoot, 'frontend/src/lib/schemas/server/startup.ts'));
+const { userApiKeySchema: ApiKey } = loadSchema(resolve(panelRoot, 'frontend/src/lib/schemas/user/apiKeys.ts'));
+const { userSshKeySchema: SshKey } = loadSchema(resolve(panelRoot, 'frontend/src/lib/schemas/user/sshKeys.ts'));
+const { serializeForApi } = loadSchema(resolve(panelRoot, 'frontend/src/lib/serialization/api-transform.ts'));
 const now = new Date('2026-10-06T12:00:00Z');
 const uuid = '00000000-0000-4000-8000-000000000001';
 function seed(schema: any): any {

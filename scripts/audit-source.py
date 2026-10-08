@@ -2,6 +2,7 @@
 """Read every reference script and record its actual Calagopus adaptation boundary."""
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -10,7 +11,7 @@ from pathlib import Path
 
 reference = Path(sys.argv[1] if len(sys.argv) > 1 else '/workspace/hydrodactyl-reference')
 extension = Path(__file__).resolve().parents[1]
-panel = extension.parents[1]
+panel = Path(os.environ.get('CALAGOPUS_ROOT', str(extension.parents[1])))
 revision = subprocess.check_output(['git', '-C', str(reference), 'rev-parse', 'HEAD'], text=True).strip()
 src = reference / 'resources/scripts'
 E = 'backend-extensions/com_luxxy_hydrodactyl/frontend/src/'
@@ -116,7 +117,7 @@ audit = dict(repository='https://github.com/BlueprintFramework/hydrodactyl', rev
              scope='resources/scripts', counts=counts, entries=rows)
 (extension/'SOURCE-AUDIT.json').write_text(json.dumps(audit, indent=2)+'\n')
 header = f'''# Reference file audit\n\nReference revision: `{revision}`. All **{len(rows)}** files under `resources/scripts` were read and fingerprinted. This is an inventory of adaptation boundaries, not a claim that every upstream module executes inside Calagopus.\n\nThe extension replaces the modern shell, console, dashboard rows, main server resource pages, startup/settings and account resource pages. Remaining Calagopus pages use shared component and workspace styles. Native API clients, authentication, permission checks, dialogs, operations and drag/drop controllers remain authoritative. Hydrodactyl-only installer/software/marketplace/subdomain and game-specific integrations are not implemented by this theme.\n\n## Dispositions\n\n'''
-header += '\n'.join(f'- {key}: {value}' for key,value in counts.items())+'\n\nReproduce: `python3 tools/audit-source.py /path/to/hydrodactyl-reference`. JSON includes per-file SHA-256, imports, size, destinations and reasons.\n\n## Files\n\n| Reference file | Disposition | Destination |\n| --- | --- | --- |\n'
+header += '\n'.join(f'- {key}: {value}' for key,value in counts.items())+'\n\nReproduce: `python3 scripts/audit-source.py /path/to/hydrodactyl-reference`. JSON includes per-file SHA-256, imports, size, destinations and reasons.\n\n## Files\n\n| Reference file | Disposition | Destination |\n| --- | --- | --- |\n'
 header += '\n'.join('| `'+r['file']+'` | '+r['status']+' | '+', '.join('`'+p.replace(E,'frontend/src/')+'`' for p in r['destination'])+' |' for r in rows)+'\n'
 (extension/'SOURCE-AUDIT.md').write_text(header)
 print(json.dumps({'files':len(rows),'counts':counts},indent=2))
